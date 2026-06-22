@@ -200,7 +200,7 @@ export const content = {
     title: "Le Livre, Samira",
     subtitle: "Entre ton mot de passe",
     button: "Entrer",
-    password: "sogbe",
+    passwordHash: "b6e064d022b05b5b2f6929776d23639e1dda7d46372d64503df213fde5bd6e2a",
   },
 
   unlock: {

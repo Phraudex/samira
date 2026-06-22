@@ -24,11 +24,18 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
   const glowRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (state === "unlocking") return;
 
     const trimmed = password.trim().toLowerCase();
-    if (trimmed !== content.lock.password) {
+    
+    // Hash input password with SHA-256 using the browser's native subtle crypto API
+    const msgBuffer = new TextEncoder().encode(trimmed);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashed = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    if (hashed !== content.lock.passwordHash) {
       setState("error");
       setTimeout(() => setState("idle"), 600);
       return;
