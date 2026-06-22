@@ -55,7 +55,7 @@ function LazyVideoThumbnail({ src, index }: { src: string; index: number }) {
     >
       {shouldLoad ? (
         <video
-          src={`${src}#t=0.5`}
+          src={src}
           preload="metadata"
           playsInline
           muted
@@ -161,12 +161,8 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: easings.cinematic }}
-            style={{
-              background: "rgba(6,3,9,0.6)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
-            }}
+            transition={{ duration: 0.2, ease: easings.cinematic }}
+            style={{ background: "rgba(6,3,9,0.75)" }}
             onClick={onClose}
           >
             <motion.div
@@ -178,7 +174,7 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ duration: 0.5, ease: easings.cinematic }}
+              transition={{ duration: 0.35, ease: easings.cinematic }}
               onAnimationComplete={() => {
                 setIsTransitionFinished(true);
               }}

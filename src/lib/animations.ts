@@ -1,12 +1,12 @@
 import type { Variants } from "framer-motion";
 
-// Easings
+// Easings — typed as BezierDefinition tuples for Framer Motion compatibility
 export const easings = {
-  default: [0.4, 0, 0.2, 1] as number[],
-  enter: [0, 0, 0.2, 1] as number[],
-  exit: [0.4, 0, 1, 1] as number[],
-  spring: [0.34, 1.56, 0.64, 1] as number[],
-  cinematic: [0.22, 1, 0.36, 1] as number[],
+  default:  [0.4, 0, 0.2, 1]    as [number, number, number, number],
+  enter:    [0, 0, 0.2, 1]      as [number, number, number, number],
+  exit:     [0.4, 0, 1, 1]      as [number, number, number, number],
+  spring:   [0.34, 1.56, 0.64, 1] as [number, number, number, number],
+  cinematic:[0.22, 1, 0.36, 1]  as [number, number, number, number],
 };
 
 export const durations = {

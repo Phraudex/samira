@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, type PanInfo } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "framer-motion";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { easings } from "@/lib/animations";
@@ -17,35 +17,39 @@ interface LightboxProps {
 
 export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex = 50 }: LightboxProps) {
   const [current, setCurrent] = useState(initialIndex);
-  const [direction, setDirection] = useState(1);
   const [mounted, setMounted] = useState(false);
+  const x = useMotionValue(0);
+  const isAnimating = useRef(false);
+  const n = images.length;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Sync index when Lightbox opens
   useEffect(() => {
     if (isOpen) {
       setCurrent(initialIndex);
+      x.set(0);
     }
-  }, [initialIndex, isOpen]);
+  }, [initialIndex, isOpen, x]);
 
-  const goNext = useCallback(() => {
-    if (images.length < 2) return;
-    setDirection(1);
-    setCurrent((c) => (c + 1) % images.length);
-  }, [images.length]);
+  const slideBy = useCallback((dir: 1 | -1) => {
+    if (isAnimating.current || n < 2) return;
+    isAnimating.current = true;
+    const target: number = dir === 1 ? -window.innerWidth : window.innerWidth;
+    animate(x, target, {
+      duration: 0.22,
+      ease: easings.cinematic,
+    }).then(() => {
+      x.set(0);
+      setCurrent((c) => (c + dir + n) % n);
+      isAnimating.current = false;
+    });
+  }, [n, x]);
 
-  const goPrev = useCallback(() => {
-    if (images.length < 2) return;
-    setDirection(-1);
-    setCurrent((c) => (c - 1 + images.length) % images.length);
-  }, [images.length]);
+  const goNext = useCallback(() => slideBy(1), [slideBy]);
+  const goPrev = useCallback(() => slideBy(-1), [slideBy]);
 
   useEffect(() => {
     if (!isOpen) return;
-
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -61,33 +65,44 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
 
   const handleDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      if (info.offset.x < -50 || info.velocity.x < -400) goNext();
-      else if (info.offset.x > 50 || info.velocity.x > 400) goPrev();
+      if (isAnimating.current) return;
+      const { x: ox } = info.offset;
+      const { x: vx } = info.velocity;
+      if (ox < -50 || vx < -400) goNext();
+      else if (ox > 50 || vx > 400) goPrev();
+      else animate(x, 0, { type: "spring", stiffness: 600, damping: 45 });
     },
-    [goNext, goPrev]
+    [goNext, goPrev, x]
   );
-
-  const slideVariants = {
-    enter: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0, scale: 0.97 }),
-    center: { x: 0, opacity: 1, scale: 1, transition: { duration: 0.2, ease: easings.cinematic } },
-    exit: (d: number) => ({ x: d < 0 ? 50 : -50, opacity: 0, scale: 0.97, transition: { duration: 0.15, ease: easings.cinematic } }),
-  };
 
   if (!mounted) return null;
 
-  const safeCurrent = (images.length > 0 && current < images.length) ? current : 0;
-  const imageSrc = images[safeCurrent] || images[initialIndex] || images[0] || "";
+  const prevIdx = (current - 1 + n) % n;
+  const nextIdx = (current + 1) % n;
+
+  // 3 persistent slots keyed by role — images never unmount on swipe
+  // Math: slot visual position = CSS offset (vw) + motionValue x
+  // After animation: x goes ±vw, then resets to 0 while current updates
+  // The image that was ±100vw becomes 0 in both states → zero flash
+  const slots =
+    n === 1
+      ? [{ key: "center" as const, src: images[0], offsetVw: 0, isPriority: true }]
+      : [
+          { key: "prev" as const,   src: images[prevIdx], offsetVw: -100, isPriority: false },
+          { key: "center" as const, src: images[current],  offsetVw: 0,   isPriority: true  },
+          { key: "next" as const,   src: images[nextIdx],  offsetVw: 100,  isPriority: false },
+        ];
 
   return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-center justify-center"
+          className="fixed inset-0 overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: easings.cinematic }}
-          style={{ zIndex, background: "rgba(0,0,0,0.95)", touchAction: "none" }}
+          transition={{ duration: 0.18, ease: easings.cinematic }}
+          style={{ zIndex, background: "rgba(0,0,0,0.96)" }}
           onClick={onClose}
         >
           {/* Close */}
@@ -98,7 +113,7 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
               position: "absolute",
               top: "calc(20px + env(safe-area-inset-top, 0px))",
               right: "20px",
-              zIndex: 10,
+              zIndex: 20,
               width: "44px",
               height: "44px",
               borderRadius: "12px",
@@ -115,7 +130,7 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
           </button>
 
           {/* Counter */}
-          {images.length > 1 && (
+          {n > 1 && (
             <p
               style={{
                 position: "absolute",
@@ -126,78 +141,64 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
                 letterSpacing: "1.5px",
                 color: "rgba(255,255,255,0.35)",
                 fontFamily: "var(--font-body)",
-                zIndex: 10,
+                zIndex: 20,
+                pointerEvents: "none",
               }}
             >
-              {safeCurrent + 1} / {images.length}
+              {current + 1} / {n}
             </p>
           )}
 
-          {/* Prefetch adjacent images for instant swiping */}
-          {images.length > 1 && (
-            <div style={{ display: "none" }} aria-hidden="true">
-              {images[(safeCurrent + 1) % images.length] && (
-                <Image
-                  src={images[(safeCurrent + 1) % images.length]}
-                  alt="prefetch-next"
-                  width={400}
-                  height={600}
-                  sizes="45vw"
-                  priority
-                />
-              )}
-              {images[(safeCurrent - 1 + images.length) % images.length] && (
-                <Image
-                  src={images[(safeCurrent - 1 + images.length) % images.length]}
-                  alt="prefetch-prev"
-                  width={400}
-                  height={600}
-                  sizes="45vw"
-                  priority
-                />
-              )}
-            </div>
-          )}
-
-          {/* Image */}
-          <AnimatePresence initial={false} custom={direction} mode="popLayout">
-            {imageSrc && (
-              <motion.div
-                key={safeCurrent}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.85}
-                onDragEnd={handleDragEnd}
-                onClick={(e) => e.stopPropagation()}
+          {/* Draggable strip — 3 persistent slots, no mount/unmount on swipe */}
+          <motion.div
+            drag={n > 1 ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.1}
+            onDragEnd={handleDragEnd}
+            style={{
+              x,
+              position: "absolute",
+              inset: 0,
+              touchAction: "pan-y",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {slots.map((slot) => (
+              <div
+                key={slot.key}
                 style={{
-                  position: "relative",
-                  width: "min(90vw, 520px)",
-                  height: "min(85dvh, 700px)",
-                  cursor: "grab",
-                  touchAction: "pan-y",
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transform: `translateX(${slot.offsetVw}vw)`,
                 }}
-                whileDrag={{ cursor: "grabbing" }}
               >
-                <Image
-                  src={imageSrc}
-                  alt="Samira"
-                  fill
-                  sizes="(max-width:768px) 90vw, 520px"
-                  className="object-contain"
-                  draggable={false}
-                  priority
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div
+                  style={{
+                    position: "relative",
+                    width: "min(90vw, 520px)",
+                    height: "min(85dvh, 700px)",
+                  }}
+                >
+                  <Image
+                    src={slot.src}
+                    alt="Samira"
+                    fill
+                    sizes="(max-width:768px) 90vw, 520px"
+                    className="object-contain"
+                    draggable={false}
+                    priority={slot.isPriority}
+                    loading={slot.isPriority ? "eager" : "eager"}
+                  />
+                </div>
+              </div>
+            ))}
+          </motion.div>
 
           {/* Desktop arrows */}
-          {images.length > 1 && (
+          {n > 1 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); goPrev(); }}
@@ -215,6 +216,7 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
                   border: "1px solid rgba(255,255,255,0.1)",
                   color: "rgba(255,255,255,0.7)",
                   cursor: "pointer",
+                  zIndex: 20,
                 }}
               >
                 <ChevronLeft size={20} strokeWidth={1.5} />
@@ -235,6 +237,7 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
                   border: "1px solid rgba(255,255,255,0.1)",
                   color: "rgba(255,255,255,0.7)",
                   cursor: "pointer",
+                  zIndex: 20,
                 }}
               >
                 <ChevronRight size={20} strokeWidth={1.5} />
