@@ -1,3 +1,181 @@
+export interface BibliothequeItem {
+  id: string;
+  titre: string;
+  description: string;
+  photos: string[];
+  videos: string[];
+}
+
+export const bibliotheque: BibliothequeItem[] = [
+  {
+    id: "01",
+    titre: "Tenue Violette Tabaski",
+    description: "Tenue islamique de fête violette, playbacks en Dioula.",
+    photos: [
+      "/bibliotheque/01_tenue_violette_tabaski/P01.JPG",
+      "/bibliotheque/01_tenue_violette_tabaski/P13.JPG",
+      "/bibliotheque/01_tenue_violette_tabaski/P14.JPG",
+      "/bibliotheque/01_tenue_violette_tabaski/P15.JPG",
+      "/bibliotheque/01_tenue_violette_tabaski/P16.JPG",
+      "/bibliotheque/01_tenue_violette_tabaski/P17.JPG",
+    ],
+    videos: [
+      "/bibliotheque/01_tenue_violette_tabaski/V01.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V02.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V03.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V04.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V05.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V06.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V07.MP4",
+      "/bibliotheque/01_tenue_violette_tabaski/V08.MP4",
+    ],
+  },
+  {
+    id: "02",
+    titre: "Promenade sur le Goudron",
+    description: "Kamis violet au soleil, éclats de rire sur route goudronnée.",
+    photos: [
+      "/bibliotheque/02_tenue_violette_goudron/P18.png",
+      "/bibliotheque/02_tenue_violette_goudron/P19.png",
+      "/bibliotheque/02_tenue_violette_goudron/P20.png",
+      "/bibliotheque/02_tenue_violette_goudron/P21.png",
+      "/bibliotheque/02_tenue_violette_goudron/P22.png",
+      "/bibliotheque/02_tenue_violette_goudron/P23.png",
+      "/bibliotheque/02_tenue_violette_goudron/P24.png",
+      "/bibliotheque/02_tenue_violette_goudron/P25.png",
+      "/bibliotheque/02_tenue_violette_goudron/P26.png",
+      "/bibliotheque/02_tenue_violette_goudron/P27.png",
+      "/bibliotheque/02_tenue_violette_goudron/P28.png",
+      "/bibliotheque/02_tenue_violette_goudron/P29.png",
+      "/bibliotheque/02_tenue_violette_goudron/P30.png",
+    ],
+    videos: [],
+  },
+  {
+    id: "03",
+    titre: "Restaurant en Jaune & Marron",
+    description: "Sortie restaurant, robe jaune et foulard marron.",
+    photos: [
+      "/bibliotheque/03_tenue_jaune_restaurant/P09.JPG",
+      "/bibliotheque/03_tenue_jaune_restaurant/P10.JPG",
+      "/bibliotheque/03_tenue_jaune_restaurant/P11.JPG",
+      "/bibliotheque/03_tenue_jaune_restaurant/P12.JPG",
+    ],
+    videos: [],
+  },
+  {
+    id: "04",
+    titre: "Rose Ramadan",
+    description: "Fête du Ramadan, tenue rose et voiture.",
+    photos: [
+      "/bibliotheque/04_tenue_rose_ramadan/P32.jpg",
+      "/bibliotheque/04_tenue_rose_ramadan/P33.jpg",
+      "/bibliotheque/04_tenue_rose_ramadan/P34.jpg",
+      "/bibliotheque/04_tenue_rose_ramadan/P35.jpg",
+      "/bibliotheque/04_tenue_rose_ramadan/P36.jpg",
+      "/bibliotheque/04_tenue_rose_ramadan/P38.jpg",
+    ],
+    videos: [
+      "/bibliotheque/04_tenue_rose_ramadan/V10.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V11.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V12.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V13.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V14.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V15.mp4",
+      "/bibliotheque/04_tenue_rose_ramadan/V16.mp4",
+    ],
+  },
+  {
+    id: "05",
+    titre: "Chemise Jaune, Foulard Bleu",
+    description: "Selfies Snapchat, chemise jaune sur t-shirt noir.",
+    photos: [
+      "/bibliotheque/05_chemise_jaune_foulard_bleu/P41.JPG",
+      "/bibliotheque/05_chemise_jaune_foulard_bleu/P42.JPG",
+      "/bibliotheque/05_chemise_jaune_foulard_bleu/P43.JPG",
+    ],
+    videos: [
+      "/bibliotheque/05_chemise_jaune_foulard_bleu/V22.MP4",
+      "/bibliotheque/05_chemise_jaune_foulard_bleu/V23.MP4",
+    ],
+  },
+  {
+    id: "06",
+    titre: "Treillis Militaire au Salon",
+    description: "Ensemble treillis, playbacks et poses dans un salon.",
+    photos: [
+      "/bibliotheque/06_treillis_militaire_salon/P44.png",
+      "/bibliotheque/06_treillis_militaire_salon/P45.JPG",
+      "/bibliotheque/06_treillis_militaire_salon/P46.JPG",
+    ],
+    videos: [
+      "/bibliotheque/06_treillis_militaire_salon/V34.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V35.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V36.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V37.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V38.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V39.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V40.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V41.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V42.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V43.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V44.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V45.MP4",
+      "/bibliotheque/06_treillis_militaire_salon/V46.MP4",
+    ],
+  },
+  {
+    id: "07",
+    titre: "Robe Noire aux Papillons",
+    description: "Robe noire, foulard marron orné de papillons roses.",
+    photos: [
+      "/bibliotheque/07_robe_noire_foulard_papillons/P48.JPG",
+      "/bibliotheque/07_robe_noire_foulard_papillons/P49.JPG",
+    ],
+    videos: [
+      "/bibliotheque/07_robe_noire_foulard_papillons/V48.MP4",
+      "/bibliotheque/07_robe_noire_foulard_papillons/V49.MP4",
+      "/bibliotheque/07_robe_noire_foulard_papillons/V50.MP4",
+      "/bibliotheque/07_robe_noire_foulard_papillons/V51.MP4",
+      "/bibliotheque/07_robe_noire_foulard_papillons/V52.MP4",
+      "/bibliotheque/07_robe_noire_foulard_papillons/V53.MP4",
+    ],
+  },
+  {
+    id: "08",
+    titre: "Foulard Noir & Rose Violet",
+    description: "Foulard noir superposé sur foulard violet-rose.",
+    photos: [
+      "/bibliotheque/08_foulard_noir_et_rose_violet/P05.JPG",
+      "/bibliotheque/08_foulard_noir_et_rose_violet/P06.JPG",
+      "/bibliotheque/08_foulard_noir_et_rose_violet/P07.JPG",
+      "/bibliotheque/08_foulard_noir_et_rose_violet/P08.JPG",
+    ],
+    videos: [],
+  },
+  {
+    id: "09",
+    titre: "Complet Blanc, Foulard à Motifs",
+    description: "Ensemble blanc avec foulard rose à motifs, pose de dos.",
+    photos: [
+      "/bibliotheque/09_complet_blanc_foulard_rose_motifs/P39.JPG",
+      "/bibliotheque/09_complet_blanc_foulard_rose_motifs/P40.JPG",
+    ],
+    videos: [],
+  },
+  {
+    id: "10",
+    titre: "La Casquette par-dessus le Foulard",
+    description: "Style décontracté en voiture, casquette sur le foulard.",
+    photos: [],
+    videos: [
+      "/bibliotheque/10_foulard_et_casquette_voiture/V18.MP4",
+      "/bibliotheque/10_foulard_et_casquette_voiture/V19.MP4",
+      "/bibliotheque/10_foulard_et_casquette_voiture/V20.MP4",
+    ],
+  },
+];
+
 export interface Souvenir {
   id: string;
   title: string;
@@ -33,7 +211,7 @@ export const content = {
   hero: {
     name: "Samira",
     tagline: "Une âme rare dans un monde ordinaire.",
-    image: "/images/samira/P44.JPG",
+    image: "/images/samira/P44.png",
   },
 
   chapters: [
@@ -68,13 +246,6 @@ export const content = {
         "La véritable beauté est celle qui s'ancre dans des principes solides. Samira porte ses convictions religieuses comme un vêtement de lumière. Son attachement à l'Islam, sa pudeur et la fierté avec laquelle elle porte son foulard imposent le respect. C'est une élégance spirituelle, guidée par la foi et le respect de ce qu'Allah (SWT) a demandé, qui donne à sa personnalité sa force et sa profondeur unique.",
     },
     {
-      number: 4,
-      title: "Ses talents",
-      content:
-        "La cuisine chez Samira n'est pas seulement une habitude, c'est un véritable talent. Elle sait transformer les repas en moments uniques, alliant la créativité à la rigueur des saveurs. C'est une autre facette de sa générosité : donner du plaisir et partager son savoir-faire à travers des plats qui en disent long sur son sens du détail.",
-      images: [] as string[],
-    },
-    {
       number: 5,
       title: "Sa force",
       content:
@@ -91,7 +262,7 @@ export const content = {
       images: [
         "/images/samira/P01.JPG",
         "/images/samira/P03.jpg",
-        "/images/samira/P11.HEIC",
+        "/images/samira/P11.JPG",
         "/images/samira/P13.JPG",
         "/images/samira/P18.png",
         "/images/samira/P19.png",
@@ -99,7 +270,7 @@ export const content = {
         "/images/samira/P32.jpg",
         "/images/samira/P41.JPG",
         "/images/samira/P43.JPG",
-        "/images/samira/P44.JPG",
+        "/images/samira/P44.png",
         "/images/samira/P47.JPG",
         "/images/samira/P49.JPG",
       ],
@@ -127,7 +298,7 @@ export const content = {
           id: "souvenir-03",
           title: "Le restaurant du 20 mars",
           date: "20 mars 2024",
-          image: "/bibliotheque/03_tenue_jaune_restaurant/P11.HEIC",
+          image: "/bibliotheque/03_tenue_jaune_restaurant/P11.JPG",
           message: "Une semaine après l'anniversaire, une soirée parfaite.",
           anecdote: "Elle portait du jaune, et le restaurant aussi semblait sourire.",
         },
@@ -149,7 +320,7 @@ export const content = {
         {
           id: "souvenir-06",
           title: "La masterclass au salon",
-          image: "/bibliotheque/06_treillis_militaire_salon/P44.JPG",
+          image: "/bibliotheque/06_treillis_militaire_salon/P44.png",
           message: "Assise sur ce fauteuil, elle était simplement exceptionnelle.",
           anecdote: "La photo préférée. Une vraie masterclass.",
         },
@@ -194,6 +365,6 @@ export const content = {
 
   end: {
     message: "Merci d'être toi.",
-    image: "/images/samira/P15.JPG",
+    image: "/images/samira/P47.JPG",
   },
 } as const;

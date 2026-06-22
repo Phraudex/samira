@@ -6,7 +6,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#34117E",
+  themeColor: "#060309",
   userScalable: false,
 };
 
@@ -46,7 +46,12 @@ export const metadata: Metadata = {
     ],
   },
   other: {
-    "mobile-web-app-capable": "yes",
+    // iOS n'active la status bar translucide (`black-translucent`) QUE si ce tag
+    // legacy est présent. Next.js 15 ne l'émet plus via `appleWebApp.capable`
+    // (il n'émet que le `mobile-web-app-capable` moderne, ignoré par iOS pour ce
+    // comportement). Sans ce tag, iOS dessine une status bar opaque remplie par
+    // la theme-color → le bandeau sombre sous l'heure/réseau.
+    "apple-mobile-web-app-capable": "yes",
   },
 };
 
@@ -66,7 +71,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
       </head>
-      <body className="bg-dark-900 font-body antialiased overflow-x-hidden">
+      <body className="font-body antialiased overflow-x-hidden" style={{ backgroundColor: "#060309" }}>
         {children}
       </body>
     </html>

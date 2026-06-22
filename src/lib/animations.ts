@@ -2,21 +2,20 @@ import type { Variants } from "framer-motion";
 
 // Easings
 export const easings = {
-  default: [0.4, 0, 0.2, 1],
-  enter: [0, 0, 0.2, 1],
-  exit: [0.4, 0, 1, 1],
-  spring: [0.34, 1.56, 0.64, 1],
-  cinematic: [0.22, 1, 0.36, 1],
-} as const;
+  default: [0.4, 0, 0.2, 1] as number[],
+  enter: [0, 0, 0.2, 1] as number[],
+  exit: [0.4, 0, 1, 1] as number[],
+  spring: [0.34, 1.56, 0.64, 1] as number[],
+  cinematic: [0.22, 1, 0.36, 1] as number[],
+};
 
-// Durations (ms)
 export const durations = {
   micro: 0.15,
   short: 0.3,
   medium: 0.5,
   long: 0.8,
   cinematic: 1.2,
-} as const;
+};
 
 // Scroll-triggered entrance animations
 export const fadeUp: Variants = {
@@ -32,7 +31,7 @@ export const fadeIn: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.5 },
+    transition: { duration: 0.6, ease: easings.cinematic },
   },
 };
 
@@ -68,7 +67,7 @@ export const blurIn: Variants = {
   visible: {
     opacity: 1,
     filter: "blur(0px)",
-    transition: { duration: 0.8, ease: easings.default },
+    transition: { duration: 0.8, ease: easings.cinematic },
   },
 };
 
@@ -83,18 +82,17 @@ export const staggerContainer: Variants = {
   },
 };
 
-// Viewport config for whileInView
 export const viewportConfig = {
   once: true,
-  amount: 0.2,
-} as const;
+  amount: 0.15,
+};
 
 // Glass card hover
 export const glassCardHover = {
   rest: { boxShadow: "0 8px 32px rgba(10,5,21,0.4)" },
   hover: {
     boxShadow: "0 16px 48px rgba(123,69,240,0.15)",
-    transition: { duration: 0.3, ease: easings.default },
+    transition: { duration: 0.25, ease: easings.cinematic },
   },
 };
 

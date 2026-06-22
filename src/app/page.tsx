@@ -1,29 +1,97 @@
 "use client";
 
-export default function Home() {
+import { useState } from "react";
+import LockScreen from "@/components/LockScreen";
+import Hero from "@/components/Hero";
+import ChapterNav from "@/components/ChapterNav";
+import dynamic from "next/dynamic";
+
+const Chapter1 = dynamic(() => import("@/components/Chapter1"));
+const Chapter2 = dynamic(() => import("@/components/Chapter2"));
+const Chapter3 = dynamic(() => import("@/components/Chapter3"));
+const Chapter5 = dynamic(() => import("@/components/Chapter5"));
+const Chapter6 = dynamic(() => import("@/components/Chapter6"));
+const Chapter7 = dynamic(() => import("@/components/Chapter7"));
+const Chapter8 = dynamic(() => import("@/components/Chapter8"));
+const EndScreen = dynamic(() => import("@/components/EndScreen"));
+
+type AppState = "locked" | "unlocked";
+
+function ChapterSeparator() {
   return (
-    <main className="min-h-screen-safe bg-dark-900 flex flex-col items-center justify-center inset-safe">
-      <div className="text-center space-y-4 px-8">
-        <p className="text-overline mb-8">Le Livre, Samira</p>
+    <div
+      aria-hidden="true"
+      style={{
+        height: "40px",
+        background:
+          "linear-gradient(180deg, transparent 0%, rgba(73,26,177,0.04) 50%, transparent 100%)",
+      }}
+    />
+  );
+}
 
-        <h1 className="font-display text-display-hero text-white font-light tracking-tight">
-          Samira
-        </h1>
+export default function Home() {
+  const [appState, setAppState] = useState<AppState>("locked");
+  const [navOpen, setNavOpen] = useState(false);
 
-        <div className="chapter-divider" />
+  return (
+    <main>
+      {appState === "locked" && (
+        <LockScreen onUnlockComplete={() => setAppState("unlocked")} />
+      )}
 
-        <p className="font-body text-body text-white-60 font-light">
-          Setup OK — PWA prête
-        </p>
+      {appState === "unlocked" && (
+        <>
+          <Hero onChaptersClick={() => setNavOpen(true)} />
+          <ChapterNav isOpen={navOpen} onClose={() => setNavOpen(false)} />
 
-        <div className="mt-12 glass rounded-card p-6 max-w-xs mx-auto">
-          <p className="font-body text-body-small text-white-60 text-center">
-            Toutes les fondations sont en place.
-            <br />
-            Les chapitres seront construits dans les prochains prompts.
-          </p>
-        </div>
-      </div>
+          <div style={{ height: "100dvh" }} aria-hidden="true" />
+
+          <div style={{ position: "relative", zIndex: 2, background: "#060309" }}>
+            <section id="chapitre-1" aria-label="Chapitre 1">
+              <Chapter1 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-2" aria-label="Chapitre 2">
+              <Chapter2 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-3" aria-label="Chapitre 3">
+              <Chapter3 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-5" aria-label="Chapitre 5">
+              <Chapter5 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-6" aria-label="Chapitre 6">
+              <Chapter6 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-7" aria-label="Chapitre 7">
+              <Chapter7 />
+            </section>
+
+            <ChapterSeparator />
+
+            <section id="chapitre-8" aria-label="Chapitre 8">
+              <Chapter8 />
+            </section>
+
+            <EndScreen />
+          </div>
+        </>
+      )}
     </main>
   );
 }
