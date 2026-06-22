@@ -52,6 +52,8 @@ export const metadata: Metadata = {
     // comportement). Sans ce tag, iOS dessine une status bar opaque remplie par
     // la theme-color → le bandeau sombre sous l'heure/réseau.
     "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "mobile-web-app-capable": "yes",
   },
 };
 
