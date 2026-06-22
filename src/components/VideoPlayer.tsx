@@ -283,7 +283,7 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
                 ref={videoRef}
                 key={src}
                 playsInline
-                preload="metadata"
+                preload="auto"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}

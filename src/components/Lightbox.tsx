@@ -68,9 +68,9 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
   );
 
   const slideVariants = {
-    enter: (d: number) => ({ x: d > 0 ? 60 : -60, opacity: 0, scale: 0.97 }),
-    center: { x: 0, opacity: 1, scale: 1, transition: { duration: 0.25, ease: easings.cinematic } },
-    exit: (d: number) => ({ x: d < 0 ? 60 : -60, opacity: 0, scale: 0.97, transition: { duration: 0.2, ease: easings.cinematic } }),
+    enter: (d: number) => ({ x: d > 0 ? 50 : -50, opacity: 0, scale: 0.97 }),
+    center: { x: 0, opacity: 1, scale: 1, transition: { duration: 0.2, ease: easings.cinematic } },
+    exit: (d: number) => ({ x: d < 0 ? 50 : -50, opacity: 0, scale: 0.97, transition: { duration: 0.15, ease: easings.cinematic } }),
   };
 
   if (!mounted) return null;
@@ -133,6 +133,32 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
             </p>
           )}
 
+          {/* Prefetch adjacent images for instant swiping */}
+          {images.length > 1 && (
+            <div style={{ display: "none" }} aria-hidden="true">
+              {images[(safeCurrent + 1) % images.length] && (
+                <Image
+                  src={images[(safeCurrent + 1) % images.length]}
+                  alt="prefetch-next"
+                  width={400}
+                  height={600}
+                  sizes="45vw"
+                  priority
+                />
+              )}
+              {images[(safeCurrent - 1 + images.length) % images.length] && (
+                <Image
+                  src={images[(safeCurrent - 1 + images.length) % images.length]}
+                  alt="prefetch-prev"
+                  width={400}
+                  height={600}
+                  sizes="45vw"
+                  priority
+                />
+              )}
+            </div>
+          )}
+
           {/* Image */}
           <AnimatePresence initial={false} custom={direction} mode="popLayout">
             {imageSrc && (
@@ -145,7 +171,7 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
                 exit="exit"
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
+                dragElastic={0.85}
                 onDragEnd={handleDragEnd}
                 onClick={(e) => e.stopPropagation()}
                 style={{
