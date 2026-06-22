@@ -5,6 +5,8 @@ import LockScreen from "@/components/LockScreen";
 import Hero from "@/components/Hero";
 import ChapterNav from "@/components/ChapterNav";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
+import { BookOpen } from "lucide-react";
 
 const Chapter1 = dynamic(() => import("@/components/Chapter1"));
 const Chapter2 = dynamic(() => import("@/components/Chapter2"));
@@ -42,8 +44,39 @@ export default function Home() {
 
       {appState === "unlocked" && (
         <>
-          <Hero onChaptersClick={() => setNavOpen(true)} />
+          <Hero />
           <ChapterNav isOpen={navOpen} onClose={() => setNavOpen(false)} />
+
+          {/* Sticky Book Navigation Button */}
+          <motion.button
+            className="fixed flex items-center justify-center cursor-pointer transition-colors duration-300"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 1.2 }}
+            onClick={() => setNavOpen(true)}
+            title="Chapitres"
+            aria-label="Menu des chapitres"
+            style={{
+              width: "44px",
+              height: "44px",
+              top: "calc(20px + env(safe-area-inset-top, 0px))",
+              right: "20px",
+              background: "rgba(255, 255, 255, 0.06)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "14px",
+              color: "rgba(255, 255, 255, 0.6)",
+              zIndex: 40,
+            }}
+            whileHover={{
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              color: "rgba(255, 255, 255, 0.9)",
+              borderColor: "rgba(123, 69, 240, 0.25)",
+            }}
+          >
+            <BookOpen size={20} strokeWidth={1.5} />
+          </motion.button>
 
           <div style={{ height: "100dvh" }} aria-hidden="true" />
 

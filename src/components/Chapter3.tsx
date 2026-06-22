@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   motion,
   useMotionValue,
-  useTransform,
-  AnimatePresence,
+  useMotionValueEvent,
+  animate,
   type PanInfo,
 } from "framer-motion";
 import Image from "next/image";
 import ChapterHeader from "./ChapterHeader";
-import { fadeUp, viewportConfig, easings } from "@/lib/animations";
+import { fadeUp, viewportConfig } from "@/lib/animations";
 import { content } from "@/data/content";
 
 const chapter = content.chapters[2];
@@ -22,80 +22,126 @@ const allCards = [
   "/images/samira/P38.jpg",
 ];
 
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 50;
 
-const bgOffsets = [
-  { scale: 0.94, y: 14, rotate: -3, opacity: 0.7 },
-  { scale: 0.88, y: 28, rotate: 4, opacity: 0.45 },
-  { scale: 0.82, y: 42, rotate: -2, opacity: 0.25 },
-];
+const STACK: Record<
+  number,
+  { scale: number; y: number; rotate: number; opacity: number; zIndex: number }
+> = {
+  0: { scale: 1, y: 0, rotate: 0, opacity: 1, zIndex: 10 },
+  1: { scale: 0.96, y: 10, rotate: -2, opacity: 0.7, zIndex: 3 },
+  2: { scale: 0.92, y: 20, rotate: 3, opacity: 0.45, zIndex: 2 },
+  3: { scale: 0.88, y: 30, rotate: -1.5, opacity: 0.25, zIndex: 1 },
+};
 
-function DraggableCard({
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+function Card({
   src,
-  exitX,
+  relIndex,
+  isAnimating,
+  setIsAnimating,
   onSwipe,
 }: {
   src: string;
-  exitX: number;
-  onSwipe: (dir: number) => void;
+  relIndex: number;
+  isAnimating: boolean;
+  setIsAnimating: (v: boolean) => void;
+  onSwipe: () => void;
 }) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-12, 12]);
-  const opacity = useTransform(
-    x,
-    [-200, -120, 0, 120, 200],
-    [0.6, 0.85, 1, 0.85, 0.6]
-  );
+  const cardRotate = useMotionValue(STACK[relIndex].rotate);
+  const cardOpacity = useMotionValue(STACK[relIndex].opacity);
+  const flyingRef = useRef(false);
+  const relIndexRef = useRef(relIndex);
+  relIndexRef.current = relIndex;
+
+  useEffect(() => {
+    if (flyingRef.current) return;
+
+    const target = STACK[relIndex];
+    const t = { duration: 0.4, ease };
+
+    animate(cardRotate, relIndex === 0 ? 0 : target.rotate, t);
+    animate(cardOpacity, target.opacity, t);
+  }, [relIndex, cardRotate, cardOpacity]);
+
+  useMotionValueEvent(x, "change", (v) => {
+    if (relIndex !== 0 || flyingRef.current) return;
+    cardRotate.set(Math.max(-15, Math.min(15, (v / 160) * 15)));
+    cardOpacity.set(Math.max(0.4, 1 - (Math.abs(v) / 180) * 0.6));
+  });
 
   const handleDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      if (
-        Math.abs(info.offset.x) > SWIPE_THRESHOLD ||
-        Math.abs(info.velocity.x) > 400
-      ) {
-        onSwipe(info.offset.x > 0 ? 1 : -1);
+      if (isAnimating || relIndex !== 0) return;
+
+      const { x: ox } = info.offset;
+      const { x: vx } = info.velocity;
+
+      if (Math.abs(ox) > SWIPE_THRESHOLD || Math.abs(vx) > 400) {
+        const dir = ox > 0 ? 1 : -1;
+        flyingRef.current = true;
+        setIsAnimating(true);
+        onSwipe();
+
+        const speed = Math.max(Math.abs(vx), 700);
+        const dur = Math.min(0.4, 450 / speed);
+
+        Promise.all([
+          animate(x, dir * 600, { type: "tween", duration: dur, ease }),
+          animate(cardRotate, dir * 25, { type: "tween", duration: dur, ease }),
+          animate(cardOpacity, 0, { type: "tween", duration: dur, ease }),
+        ]).then(() => {
+          const pos = STACK[relIndexRef.current];
+          x.set(0);
+          cardRotate.set(pos.rotate);
+          cardOpacity.set(pos.opacity);
+          flyingRef.current = false;
+          setIsAnimating(false);
+        });
+      } else {
+        animate(x, 0, { type: "spring", stiffness: 500, damping: 30 });
+        animate(cardRotate, 0, { type: "spring", stiffness: 500, damping: 30 });
+        animate(cardOpacity, 1, { type: "spring", stiffness: 500, damping: 30 });
       }
     },
-    [onSwipe]
+    [isAnimating, relIndex, x, cardRotate, cardOpacity, onSwipe, setIsAnimating]
   );
+
+  const pos = STACK[relIndex];
+  const isTop = relIndex === 0 || flyingRef.current;
 
   return (
     <motion.div
-      initial={{ scale: 0.92, opacity: 0, y: -20 }}
-      animate={{
-        scale: 1,
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.45, ease: easings.cinematic },
-      }}
-      exit={{
-        x: exitX,
-        rotate: exitX > 0 ? 18 : -18,
-        opacity: 0,
-        transition: { duration: 0.45, ease: easings.cinematic },
-      }}
-      drag="x"
+      drag={relIndex === 0 && !isAnimating ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.6}
+      dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      whileDrag={{ cursor: "grabbing" }}
+      whileDrag={{ cursor: "grabbing", scale: 1.02 }}
+      animate={{
+        scale: flyingRef.current ? 1 : pos.scale,
+        y: flyingRef.current ? 0 : pos.y,
+      }}
+      transition={{ duration: 0.4, ease }}
+      className="absolute top-0 left-0 w-full h-[400px] lg:h-[480px]"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: 10,
+        zIndex: flyingRef.current ? 10 : pos.zIndex,
         x,
-        rotate,
-        opacity,
-        cursor: "grab",
+        rotate: cardRotate,
+        opacity: cardOpacity,
+        cursor: relIndex === 0 && !isAnimating ? "grab" : "default",
         borderRadius: "20px",
         overflow: "hidden",
-        boxShadow:
-          "0 20px 60px rgba(10,5,21,0.7), 0 8px 24px rgba(52,17,126,0.2)",
-        border: "1px solid rgba(123,69,240,0.15)",
+        boxShadow: isTop
+          ? "0 20px 60px rgba(10,5,21,0.7), 0 8px 24px rgba(52,17,126,0.2)"
+          : "0 12px 40px rgba(10,5,21,0.5), 0 4px 16px rgba(52,17,126,0.12)",
+        border: isTop
+          ? "1px solid rgba(123,69,240,0.15)"
+          : "1px solid rgba(123,69,240,0.08)",
         touchAction: "pan-y",
+        transformOrigin: "center bottom",
+        willChange: "transform, opacity",
       }}
     >
       <Image
@@ -105,13 +151,14 @@ function DraggableCard({
         sizes="(max-width:1024px) 280px, 340px"
         className="object-cover"
         style={{ objectPosition: "center 15%", pointerEvents: "none" }}
-        priority
+        priority={relIndex <= 1}
       />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "linear-gradient(180deg, transparent 50%, rgba(10,5,21,0.35) 100%)",
+          background: isTop
+            ? "linear-gradient(180deg, transparent 50%, rgba(10,5,21,0.35) 100%)"
+            : `linear-gradient(180deg, rgba(10,5,21,${0.1 + relIndex * 0.12}) 0%, rgba(10,5,21,${0.25 + relIndex * 0.12}) 100%)`,
         }}
       />
     </motion.div>
@@ -120,18 +167,11 @@ function DraggableCard({
 
 export default function Chapter3() {
   const [topIndex, setTopIndex] = useState(0);
-  const [exitX, setExitX] = useState(300);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const handleSwipe = useCallback((dir: number) => {
-    setExitX(dir * 300);
+  const handleSwipe = useCallback(() => {
     setTopIndex((prev) => (prev + 1) % allCards.length);
   }, []);
-
-  const bgCards = bgOffsets.map((cfg, i) => ({
-    src: allCards[(topIndex + i + 1) % allCards.length],
-    ...cfg,
-    zIndex: bgOffsets.length - i,
-  }));
 
   return (
     <section
@@ -176,60 +216,19 @@ export default function Chapter3() {
           {chapter.content}
         </motion.p>
 
-        {/* Card deck — responsive via w/h classes */}
         <div className="flex justify-center">
-          <div
-            className="relative w-[280px] h-[450px] lg:w-[340px] lg:h-[530px]"
-          >
-            {/* Background stacked cards */}
-            {bgCards.map(({ src, scale, y, rotate, opacity, zIndex }, i) => (
-              <motion.div
-                key={`bg-${i}`}
-                animate={{ scale, y, rotate, opacity }}
-                transition={{ duration: 0.5, ease: easings.cinematic }}
-                className="absolute top-0 left-0 w-full h-[400px] lg:h-[480px]"
-                style={{
-                  zIndex,
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  transformOrigin: "center bottom",
-                  boxShadow:
-                    "0 12px 40px rgba(10,5,21,0.5), 0 4px 16px rgba(52,17,126,0.12)",
-                  border: "1px solid rgba(123,69,240,0.08)",
-                }}
-              >
-                <Image
-                  src={src}
-                  alt=""
-                  fill
-                  sizes="(max-width:1024px) 280px, 340px"
-                  className="object-cover"
-                  style={{ objectPosition: "center 15%" }}
-                />
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: `linear-gradient(180deg, rgba(10,5,21,${0.1 + i * 0.15}) 0%, rgba(10,5,21,${0.3 + i * 0.15}) 100%)`,
-                  }}
-                />
-              </motion.div>
+          <div className="relative w-[280px] h-[450px] lg:w-[340px] lg:h-[530px]">
+            {allCards.map((src, index) => (
+              <Card
+                key={src}
+                src={src}
+                relIndex={(index - topIndex + allCards.length) % allCards.length}
+                isAnimating={isAnimating}
+                setIsAnimating={setIsAnimating}
+                onSwipe={handleSwipe}
+              />
             ))}
 
-            {/* Top draggable card */}
-            <div
-              className="absolute top-0 left-0 w-full h-[400px] lg:h-[480px]"
-            >
-              <AnimatePresence initial={false} mode="popLayout">
-                <DraggableCard
-                  key={topIndex}
-                  src={allCards[topIndex]}
-                  exitX={exitX}
-                  onSwipe={handleSwipe}
-                />
-              </AnimatePresence>
-            </div>
-
-            {/* Card counter dots */}
             <div
               className="absolute bottom-0 left-0 right-0 flex justify-center"
               style={{ gap: "8px" }}

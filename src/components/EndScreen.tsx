@@ -5,8 +5,21 @@ import Image from "next/image";
 import { fadeUp, blurIn, viewportConfig, easings } from "@/lib/animations";
 import { content } from "@/data/content";
 import FloralDecor from "./ui/FloralDecor";
+import { ChevronUp } from "lucide-react";
+import gsap from "gsap";
 
 export default function EndScreen() {
+  const scrollToTop = () => {
+    const scrollObj = { y: window.scrollY };
+    gsap.to(scrollObj, {
+      y: 0,
+      duration: 1.5,
+      ease: "power3.out",
+      onUpdate: () => {
+        window.scrollTo(0, scrollObj.y);
+      },
+    });
+  };
   return (
     <section
       className="relative flex flex-col items-center justify-center overflow-hidden"
@@ -97,6 +110,37 @@ export default function EndScreen() {
           {content.end.message}
         </motion.span>
       </motion.h2>
+
+      {/* Scroll to top button */}
+      <motion.button
+        onClick={scrollToTop}
+        className="relative z-[1] flex items-center gap-2 px-5 py-2.5 mt-12 cursor-pointer transition-all duration-300"
+        style={{
+          background: "rgba(255, 255, 255, 0.04)",
+          border: "1px solid rgba(255, 255, 255, 0.06)",
+          borderRadius: "12px",
+          color: "rgba(255, 255, 255, 0.45)",
+          fontFamily: "var(--font-body)",
+          fontSize: "11px",
+          letterSpacing: "2px",
+          textTransform: "uppercase",
+        }}
+        whileHover={{
+          backgroundColor: "rgba(255, 255, 255, 0.08)",
+          color: "rgba(255, 255, 255, 0.8)",
+          borderColor: "rgba(123, 69, 240, 0.25)",
+          y: -2,
+        }}
+        whileTap={{ scale: 0.98 }}
+        variants={fadeUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        transition={{ delay: 0.4 }}
+      >
+        <ChevronUp size={14} strokeWidth={1.5} />
+        {"Retour en haut"}
+      </motion.button>
     </section>
   );
 }

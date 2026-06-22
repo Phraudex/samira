@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import ChapterHeader from "./ChapterHeader";
 import SouvenirModal from "./SouvenirModal";
 import SouvenirCard from "./SouvenirCard";
@@ -74,14 +74,11 @@ export default function Chapter7() {
       </section>
 
       {/* Souvenir modal */}
-      <AnimatePresence>
-        {activeItem && (
-          <SouvenirModal
-            item={activeItem}
-            onClose={() => setActiveItem(null)}
-          />
-        )}
-      </AnimatePresence>
+      <SouvenirModal
+        item={activeItem}
+        isOpen={activeItem !== null}
+        onClose={() => setActiveItem(null)}
+      />
     </>
   );
 }

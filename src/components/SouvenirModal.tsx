@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import Image from "next/image";
 import { ArrowLeft, Play } from "lucide-react";
@@ -11,18 +12,36 @@ import VideoPlayer from "./VideoPlayer";
 
 interface SouvenirModalProps {
   item: BibliothequeItem | null;
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
+export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [localItem, setLocalItem] = useState<BibliothequeItem | null>(null);
 
   useEffect(() => {
-    if (item) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (item) {
+      setLocalItem(item);
+    }
   }, [item]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   // Reset inner state when a new item opens
   useEffect(() => {
@@ -37,12 +56,12 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
     [onClose]
   );
 
-  const poster = item?.photos[0];
+  if (!mounted) return null;
 
-  return (
+  return createPortal(
     <>
       <AnimatePresence>
-        {item && (
+        {isOpen && localItem && (
           <motion.div
             className="fixed inset-0 z-50 flex flex-col"
             initial={{ opacity: 0 }}
@@ -127,7 +146,7 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                     className="font-display font-normal text-white truncate"
                     style={{ fontSize: "20px", lineHeight: 1.2, letterSpacing: "-0.01em" }}
                   >
-                    {item.titre}
+                    {localItem.titre}
                   </h2>
                 </div>
                 {/* Media count */}
@@ -137,8 +156,8 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                     style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.3px" }}
                   >
                     {[
-                      item.photos.length > 0 ? `${item.photos.length} photo${item.photos.length > 1 ? "s" : ""}` : "",
-                      item.videos.length > 0 ? `${item.videos.length} vidéo${item.videos.length > 1 ? "s" : ""}` : "",
+                      localItem.photos.length > 0 ? `${localItem.photos.length} photo${localItem.photos.length > 1 ? "s" : ""}` : "",
+                      localItem.videos.length > 0 ? `${localItem.videos.length} vidéo${localItem.videos.length > 1 ? "s" : ""}` : "",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -149,7 +168,7 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto px-4 py-5">
                 {/* Photos grid */}
-                {item.photos.length > 0 && (
+                {localItem.photos.length > 0 && (
                   <div className="mb-6">
                     <p
                       className="font-body font-semibold uppercase mb-3"
@@ -158,7 +177,7 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                       Photos
                     </p>
                     <div style={{ columns: "2", columnGap: "8px" }}>
-                      {item.photos.map((src, i) => (
+                      {localItem.photos.map((src, i) => (
                         <button
                           key={src}
                           onClick={() => setLightboxIndex(i)}
@@ -190,7 +209,7 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                 )}
 
                 {/* Videos grid */}
-                {item.videos.length > 0 && (
+                {localItem.videos.length > 0 && (
                   <div>
                     <p
                       className="font-body font-semibold uppercase mb-3"
@@ -198,22 +217,21 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                     >
                       Vidéos
                     </p>
-                    <div style={{ columns: "2", columnGap: "8px" }}>
-                      {item.videos.map((videoSrc, i) => (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      {localItem.videos.map((videoSrc, i) => (
                         <button
                           key={videoSrc}
                           onClick={() => setActiveVideo(videoSrc)}
                           style={{
                             display: "block",
                             width: "100%",
-                            marginBottom: "8px",
                             borderRadius: "12px",
                             overflow: "hidden",
                             cursor: "pointer",
                             border: "none",
                             padding: 0,
-                            breakInside: "avoid",
                             position: "relative",
+                            background: "transparent",
                           }}
                           aria-label={`Vidéo ${i + 1}`}
                         >
@@ -229,15 +247,23 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                               position: "relative",
                             }}
                           >
-                            {poster && i === 0 && (
-                              <Image
-                                src={poster}
-                                alt="Aperçu vidéo"
-                                fill
-                                className="object-cover opacity-40"
-                                sizes="45vw"
-                              />
-                            )}
+                            {/* Video thumbnail — #t=0.5 forces iOS to load a frame */}
+                            <video
+                              src={`${videoSrc}#t=0.5`}
+                              preload="metadata"
+                              playsInline
+                              muted
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                opacity: 0.6,
+                                pointerEvents: "none",
+                              }}
+                            />
+                            
                             <div
                               style={{
                                 position: "relative",
@@ -245,7 +271,7 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                                 width: "44px",
                                 height: "44px",
                                 borderRadius: "50%",
-                                background: "rgba(123,69,240,0.8)",
+                                background: "rgba(123,69,240,0.85)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -259,9 +285,10 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
                                 position: "relative",
                                 zIndex: 2,
                                 fontSize: "10px",
-                                color: "rgba(255,255,255,0.4)",
+                                color: "rgba(255,255,255,0.7)",
                                 fontFamily: "var(--font-body)",
                                 letterSpacing: "0.5px",
+                                textShadow: "0 1px 4px rgba(0,0,0,0.6)",
                               }}
                             >
                               {String(i + 1).padStart(2, "0")}
@@ -279,28 +306,22 @@ export default function SouvenirModal({ item, onClose }: SouvenirModalProps) {
       </AnimatePresence>
 
       {/* Lightbox — above modal */}
-      <AnimatePresence>
-        {lightboxIndex !== null && item && (
-          <Lightbox
-            images={item.photos}
-            initialIndex={lightboxIndex}
-            onClose={() => setLightboxIndex(null)}
-            zIndex={60}
-          />
-        )}
-      </AnimatePresence>
+      <Lightbox
+        images={localItem?.photos ?? []}
+        isOpen={lightboxIndex !== null}
+        initialIndex={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+        zIndex={60}
+      />
 
       {/* Video player — above modal */}
-      <AnimatePresence>
-        {activeVideo && (
-          <VideoPlayer
-            src={activeVideo}
-            poster={poster}
-            onClose={() => setActiveVideo(null)}
-            zIndex={60}
-          />
-        )}
-      </AnimatePresence>
-    </>
+      <VideoPlayer
+        src={activeVideo ?? ""}
+        isOpen={activeVideo !== null}
+        onClose={() => setActiveVideo(null)}
+        zIndex={60}
+      />
+    </>,
+    document.body
   );
 }

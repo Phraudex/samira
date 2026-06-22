@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import ChapterHeader from "./ChapterHeader";
-import { fadeUp, staggerContainer, viewportConfig, easings } from "@/lib/animations";
+import { fadeUp, viewportConfig, easings } from "@/lib/animations";
 import { content } from "@/data/content";
 
 const chapter = content.chapters[1];
@@ -21,15 +21,31 @@ const tags = [
 ];
 
 const violetTag = {
-  background: "rgba(123,69,240,0.14)",
-  border: "1px solid rgba(123,69,240,0.28)",
+  background: "rgba(169, 129, 255, 0.08)",
+  border: "1px solid rgba(169, 129, 255, 0.18)",
   color: "#A981FF",
 };
 
 const roseTag = {
-  background: "rgba(232,114,159,0.12)",
-  border: "1px solid rgba(232,114,159,0.28)",
+  background: "rgba(244, 166, 198, 0.06)",
+  border: "1px solid rgba(244, 166, 198, 0.18)",
   color: "#F4A6C6",
+};
+
+const tagVariants = {
+  hidden: { opacity: 0, y: 25, scale: 0.85, rotate: -4 },
+  visible: (custom: { yOffset: number; delay: number }) => ({
+    opacity: 1,
+    y: custom.yOffset,
+    scale: 1,
+    rotate: 0,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 15,
+      delay: custom.delay,
+    },
+  }),
 };
 
 // Inline floral SVG — abstract 6-petal
@@ -142,32 +158,57 @@ export default function Chapter2() {
 
         {/* Floating tags — staggered reveal */}
         <motion.div
-          className="flex flex-wrap justify-center gap-3 mb-16"
-          style={{ rowGap: "0px" }}
-          variants={staggerContainer}
+          className="flex flex-wrap justify-center gap-x-4 gap-y-6 lg:gap-x-6 lg:gap-y-8 mb-16 lg:mb-20"
           initial="hidden"
           whileInView="visible"
           viewport={viewportConfig}
         >
-          {tags.map((tag) => (
+          {tags.map((tag, index) => (
             <motion.span
               key={tag.label}
-              variants={fadeUp}
-              className="font-body font-medium"
+              variants={tagVariants}
+              custom={{ yOffset: tag.yOffset, delay: index * 0.08 }}
+              whileHover={{
+                scale: 1.06,
+                boxShadow: tag.violet
+                  ? "0 0 20px rgba(169, 129, 255, 0.35), inset 0 0 10px rgba(169, 129, 255, 0.15)"
+                  : "0 0 20px rgba(244, 166, 198, 0.35), inset 0 0 10px rgba(244, 166, 198, 0.15)",
+                borderColor: tag.violet ? "rgba(169,129,255,0.5)" : "rgba(244,166,198,0.5)",
+                background: tag.violet ? "rgba(123,69,240,0.18)" : "rgba(232,114,159,0.16)",
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+              }}
+              className="font-body font-medium cursor-pointer"
               style={{
                 ...(tag.violet ? violetTag : roseTag),
                 display: "inline-block",
-                padding: "8px 18px",
+                padding: "10px 24px",
                 borderRadius: "9999px",
-                fontSize: "12px",
-                letterSpacing: "0.5px",
+                fontSize: "13px",
+                letterSpacing: "0.06em",
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
-                transform: `translateY(${tag.yOffset}px)`,
-                marginTop: "12px",
+                transformOrigin: "center center",
+                transition: "background 0.3s, border-color 0.3s",
               }}
             >
-              {tag.label}
+              <motion.span
+                animate={{
+                  y: [0, -5, 0],
+                }}
+                transition={{
+                  duration: 3.2 + (index % 3) * 0.6,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: index * 0.15,
+                }}
+                className="block"
+              >
+                {tag.label}
+              </motion.span>
             </motion.span>
           ))}
         </motion.div>

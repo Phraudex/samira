@@ -1,24 +1,77 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause } from "lucide-react";
 import { easings } from "@/lib/animations";
 
 interface VideoPlayerProps {
   src: string;
-  poster?: string;
+  isOpen: boolean;
   onClose: () => void;
   zIndex?: number;
 }
 
-export default function VideoPlayer({ src, poster, onClose, zIndex = 60 }: VideoPlayerProps) {
+export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const timeTextRef = useRef<HTMLParagraphElement>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  const isScrubbing = useRef(false);
+  const wasPlaying = useRef(false);
+  const pendingSeekTime = useRef<number | null>(null);
+  const seekTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Autoplay video on open (user-initiated click context)
+  useEffect(() => {
+    if (isOpen && videoRef.current) {
+      const timer = setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.play().catch((err) => {
+            console.log("Autoplay blocked or interrupted:", err);
+          });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, src]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    const timeout = seekTimeout.current;
+    const raf = rafRef.current;
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  useEffect(() => {
+    setVideoError(null);
+    setIsBuffering(false);
+    setProgress(0);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [src]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -29,20 +82,44 @@ export default function VideoPlayer({ src, poster, onClose, zIndex = 60 }: Video
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [onClose]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
-      v.play().then(() => setIsPlaying(true)).catch(() => {});
+      v.play().catch(() => {});
     } else {
       v.pause();
-      setIsPlaying(false);
     }
   }, []);
 
+  const performSeek = useCallback((v: HTMLVideoElement, time: number) => {
+    try {
+      if (typeof v.fastSeek === "function") {
+        v.fastSeek(time);
+      } else {
+        v.currentTime = time;
+      }
+    } catch {
+      v.currentTime = time;
+    }
+  }, []);
+
+  const handleSeeked = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    setIsBuffering(false);
+
+    if (pendingSeekTime.current !== null) {
+      const timeToSeek = pendingSeekTime.current;
+      pendingSeekTime.current = null;
+      performSeek(v, timeToSeek);
+    }
+  }, [performSeek]);
+
   const handleTimeUpdate = useCallback(() => {
+    if (isScrubbing.current) return;
     const v = videoRef.current;
     if (!v || !v.duration) return;
     setProgress(v.currentTime / v.duration);
@@ -55,171 +132,360 @@ export default function VideoPlayer({ src, poster, onClose, zIndex = 60 }: Video
 
   const handleEnded = useCallback(() => setIsPlaying(false), []);
 
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    v.currentTime = ratio * v.duration;
-    setProgress(ratio);
-  }, []);
+    const bar = e.currentTarget;
+    bar.setPointerCapture(e.pointerId);
+    isScrubbing.current = true;
 
-  const formatTime = (s: number) => {
+    // Pause playback during scrubbing to prioritize decoding resources
+    if (!v.paused) {
+      wasPlaying.current = true;
+      v.pause();
+    } else {
+      wasPlaying.current = false;
+    }
+
+    const updateScrub = (clientX: number, isFinal = false) => {
+      const rect = bar.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const targetTime = ratio * v.duration;
+
+      // 1. Direct DOM updates (bypasses React render pipeline for absolute 120fps/60fps scrubbing)
+      if (fillRef.current) {
+        fillRef.current.style.transition = "none";
+        fillRef.current.style.width = `${ratio * 100}%`;
+      }
+      if (handleRef.current) {
+        handleRef.current.style.left = `${ratio * 100}%`;
+      }
+      if (timeTextRef.current) {
+        timeTextRef.current.textContent = `${formatTime(targetTime)} / ${formatTime(v.duration)}`;
+      }
+
+      // 2. Queue seek to avoid pipeline flooding
+      pendingSeekTime.current = targetTime;
+
+      if (isFinal) {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (seekTimeout.current) clearTimeout(seekTimeout.current);
+        pendingSeekTime.current = null;
+        
+        // Final precise frame seek on release
+        v.currentTime = targetTime;
+        setProgress(ratio);
+      } else {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          if (!v.seeking && pendingSeekTime.current !== null) {
+            const timeToSeek = pendingSeekTime.current;
+            pendingSeekTime.current = null;
+            performSeek(v, timeToSeek);
+          }
+        });
+      }
+    };
+
+    updateScrub(e.clientX);
+
+    const onMove = (ev: PointerEvent) => {
+      if (!isScrubbing.current) return;
+      updateScrub(ev.clientX);
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      if (!isScrubbing.current) return;
+      isScrubbing.current = false;
+
+      updateScrub(ev.clientX, true);
+
+      // Restore CSS transition for smooth normal playback
+      if (fillRef.current) {
+        fillRef.current.style.transition = "width 0.05s linear";
+      }
+
+      if (wasPlaying.current) {
+        v.play().catch(() => {});
+      }
+
+      bar.removeEventListener("pointermove", onMove);
+      bar.removeEventListener("pointerup", onUp);
+      bar.removeEventListener("pointercancel", onUp);
+    };
+
+    bar.addEventListener("pointermove", onMove);
+    bar.addEventListener("pointerup", onUp);
+    bar.addEventListener("pointercancel", onUp);
+  }, [performSeek]);
+
+  function formatTime(s: number) {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
+  }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 flex flex-col items-center justify-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25, ease: easings.cinematic }}
-        style={{ zIndex, background: "rgba(0,0,0,0.97)", touchAction: "none" }}
-        onClick={onClose}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          aria-label="Fermer"
-          style={{
-            position: "absolute",
-            top: "calc(20px + env(safe-area-inset-top, 0px))",
-            right: "20px",
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            color: "white",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10,
-          }}
-        >
-          <X size={20} strokeWidth={1.5} />
-        </button>
-
-        {/* Video + controls */}
+      {isOpen && (
         <motion.div
-          className="relative flex flex-col"
-          style={{ width: "min(95vw, 600px)", maxHeight: "85dvh" }}
-          initial={{ scale: 0.96, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.96, opacity: 0 }}
-          transition={{ duration: 0.35, ease: easings.cinematic }}
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 flex flex-col items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: easings.cinematic }}
+          style={{ zIndex, background: "rgba(0,0,0,0.97)", touchAction: "none" }}
+          onClick={onClose}
         >
-          {/* Video */}
-          <div
-            className="relative overflow-hidden"
-            style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", maxHeight: "70dvh", cursor: "pointer" }}
-            onClick={togglePlay}
+          {/* Close */}
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            style={{
+              position: "absolute",
+              top: "calc(20px + env(safe-area-inset-top, 0px))",
+              right: "20px",
+              width: "44px",
+              height: "44px",
+              borderRadius: "12px",
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
           >
-            <video
-              ref={videoRef}
-              src={src}
-              poster={poster}
-              playsInline
-              preload="metadata"
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={handleEnded}
-              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-            />
-            {/* Play/pause overlay */}
-            <AnimatePresence>
-              {!isPlaying && (
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, ease: easings.cinematic }}
-                  style={{ background: "rgba(0,0,0,0.25)" }}
-                >
-                  <div
-                    style={{
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "50%",
-                      background: "rgba(123,69,240,0.85)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 0 30px rgba(123,69,240,0.4)",
-                    }}
-                  >
-                    <Play size={26} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "3px" }} />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            <X size={20} strokeWidth={1.5} />
+          </button>
 
-          {/* Controls */}
-          <div className="flex flex-col gap-3 mt-4 px-1">
-            {/* Progress bar */}
+          {/* Video + controls */}
+          <motion.div
+            className="relative flex flex-col"
+            style={{ width: "min(90vw, calc(70dvh * 9 / 16), 400px)", maxHeight: "90dvh" }}
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ duration: 0.35, ease: easings.cinematic }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Video */}
             <div
-              role="progressbar"
-              aria-valuenow={Math.round(progress * 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              onClick={handleProgressClick}
-              style={{
-                height: "4px",
-                background: "rgba(255,255,255,0.15)",
-                borderRadius: "9999px",
-                cursor: "pointer",
-                position: "relative",
-              }}
+              className="relative overflow-hidden"
+              style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", width: "100%", cursor: "pointer" }}
+              onClick={togglePlay}
             >
-              <div
-                style={{
-                  height: "100%",
-                  borderRadius: "9999px",
-                  background: "linear-gradient(90deg, #7B45F0, #A981FF)",
-                  width: `${progress * 100}%`,
-                  transition: "width 0.1s linear",
+              <video
+                ref={videoRef}
+                key={src}
+                playsInline
+                preload="metadata"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={handleEnded}
+                onWaiting={() => setIsBuffering(true)}
+                onPlaying={() => setIsBuffering(false)}
+                onSeeking={() => setIsBuffering(true)}
+                onSeeked={handleSeeked}
+                onError={(e) => {
+                  const v = e.currentTarget;
+                  if (v.error) {
+                    console.error("Video loading error:", v.error);
+                    if (v.error.code === 4) {
+                      setVideoError("Format non supporté ou accès réseau bloqué.");
+                    } else if (v.error.code === 3) {
+                      setVideoError("Décodage vidéo échoué.");
+                    } else if (v.error.code === 2) {
+                      setVideoError("Erreur réseau lors du chargement.");
+                    } else {
+                      setVideoError("Impossible de charger la vidéo.");
+                    }
+                  }
                 }}
-              />
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+              >
+                <source src={src} type="video/mp4" />
+              </video>
+
+              {/* Error display */}
+              {videoError && (
+                <div 
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 px-6 text-center z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-red-400 text-sm font-body mb-4">{videoError}</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVideoError(null);
+                      if (videoRef.current) {
+                        videoRef.current.load();
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600/30 border border-purple-500/50 hover:bg-purple-600/50 text-purple-200 text-xs font-body rounded-lg transition-colors cursor-pointer"
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              )}
+
+              {/* Buffering spinner */}
+              <AnimatePresence>
+                {isBuffering && !videoError && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-[3]"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ background: "rgba(0,0,0,0.15)" }}
+                  >
+                    <div
+                      className="animate-spin"
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        border: "3px solid rgba(169, 129, 255, 0.2)",
+                        borderTopColor: "#A981FF",
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Play/pause overlay */}
+              <AnimatePresence>
+                {!isPlaying && !isScrubbing.current && !videoError && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: easings.cinematic }}
+                    style={{ background: "rgba(0,0,0,0.25)" }}
+                  >
+                    <div
+                      style={{
+                        width: "64px",
+                        height: "64px",
+                        borderRadius: "50%",
+                        background: "rgba(123,69,240,0.85)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 30px rgba(123,69,240,0.4)",
+                      }}
+                    >
+                      <Play size={26} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "3px" }} />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Time + Play button */}
-            <div className="flex items-center justify-between">
-              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontFamily: "var(--font-body)", letterSpacing: "0.5px" }}>
-                {formatTime((videoRef.current?.currentTime) ?? 0)} / {formatTime(duration)}
-              </p>
-              <button
-                onClick={togglePlay}
-                aria-label={isPlaying ? "Pause" : "Lecture"}
+            {/* Controls */}
+            <div className="flex flex-col gap-3 mt-4 px-1">
+              {/* Progress bar — large touch target with drag support */}
+              <div
+                role="slider"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Progression vidéo"
                 style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  background: "rgba(123,69,240,0.2)",
-                  border: "1px solid rgba(123,69,240,0.3)",
-                  color: "#A981FF",
-                  cursor: "pointer",
+                  position: "relative",
+                  height: "32px",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  cursor: "pointer",
+                  touchAction: "none",
                 }}
+                onPointerDown={handlePointerDown}
               >
-                {isPlaying
-                  ? <Pause size={16} strokeWidth={1.5} />
-                  : <Play size={16} strokeWidth={1.5} style={{ marginLeft: "2px" }} />
-                }
-              </button>
+                {/* Track */}
+                <div
+                  style={{
+                    width: "100%",
+                    height: "6px",
+                    background: "rgba(255,255,255,0.12)",
+                    borderRadius: "9999px",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Fill */}
+                  <div
+                    ref={fillRef}
+                    style={{
+                      height: "100%",
+                      borderRadius: "9999px",
+                      background: "linear-gradient(90deg, #7B45F0, #A981FF)",
+                      width: `${progress * 100}%`,
+                      transition: "width 0.05s linear",
+                    }}
+                  />
+                </div>
+                {/* Scrub handle */}
+                <div
+                  ref={handleRef}
+                  style={{
+                    position: "absolute",
+                    left: `${progress * 100}%`,
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "50%",
+                    background: "#A981FF",
+                    boxShadow: "0 0 8px rgba(123,69,240,0.5)",
+                    border: "2px solid rgba(255,255,255,0.9)",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+
+              {/* Time + Play button */}
+              <div className="flex items-center justify-between">
+                <p 
+                  ref={timeTextRef}
+                  style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-body)", letterSpacing: "0.5px" }}
+                >
+                  {formatTime(progress * duration)} / {formatTime(duration)}
+                </p>
+                <button
+                  onClick={togglePlay}
+                  aria-label={isPlaying ? "Pause" : "Lecture"}
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    background: "rgba(123,69,240,0.25)",
+                    border: "1px solid rgba(123,69,240,0.35)",
+                    color: "#A981FF",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isPlaying
+                    ? <Pause size={18} strokeWidth={1.5} />
+                    : <Play size={18} strokeWidth={1.5} style={{ marginLeft: "2px" }} />
+                  }
+                </button>
+              </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }

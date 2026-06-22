@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import ChapterHeader from "./ChapterHeader";
 import Lightbox from "./Lightbox";
-import { staggerContainer, fadeUp, viewportConfig, easings } from "@/lib/animations";
+import { staggerContainer, fadeIn, viewportConfig, easings } from "@/lib/animations";
 import { content } from "@/data/content";
 
 const chapter = content.chapters[4];
@@ -71,7 +71,7 @@ export default function Chapter6() {
             {galleryPhotos.map((photo, i) => (
               <motion.button
                 key={photo.src}
-                variants={fadeUp}
+                variants={fadeIn}
                 onClick={() => setLightboxIndex(i)}
                 style={{
                   display: "block",
@@ -87,7 +87,7 @@ export default function Chapter6() {
                 }}
                 aria-label={`Ouvrir photo ${i + 1}`}
                 whileHover={{ scale: 1.02 }}
-                transition={{ delay: i * 0.08, duration: 0.6, ease: easings.cinematic }}
+                transition={{ duration: 0.4, ease: easings.cinematic }}
               >
                 <div style={{ aspectRatio: photo.ratio, position: "relative" }}>
                   <Image
@@ -105,15 +105,12 @@ export default function Chapter6() {
       </section>
 
       {/* Lightbox */}
-      <AnimatePresence>
-        {lightboxIndex !== null && (
-          <Lightbox
-            images={imageSrcs}
-            initialIndex={lightboxIndex}
-            onClose={() => setLightboxIndex(null)}
-          />
-        )}
-      </AnimatePresence>
+      <Lightbox
+        images={imageSrcs}
+        isOpen={lightboxIndex !== null}
+        initialIndex={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+      />
     </>
   );
 }

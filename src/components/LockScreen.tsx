@@ -50,9 +50,62 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
       style={{ background: "#060309" }}
     >
+      <style>{`
+        @keyframes spinGlow {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+        }
+        @keyframes spinGlowRev {
+          0% {
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+        }
+      `}</style>
+      {/* Background Grid Image with slow breathing scale & unlock fadeout */}
+      <motion.div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        initial={{ opacity: 0, scale: 1.05 }}
+        animate={{
+          opacity: state === "unlocking" ? 0 : 0.45,
+          scale: state === "unlocking" ? 1.08 : [1.02, 1.06, 1.02]
+        }}
+        transition={{
+          opacity: { duration: 0.8, ease: "easeOut" },
+          scale: {
+            duration: state === "unlocking" ? 1.2 : 25,
+            ease: "easeInOut",
+            repeat: state === "unlocking" ? 0 : Infinity
+          }
+        }}
+        style={{
+          backgroundImage: 'url("/images/bg_grid.jpg")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          mixBlendMode: "screen",
+        }}
+      />
+
+      {/* Dark radial vignette to blend grid edges seamlessly into the black background */}
+      <motion.div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        animate={{ opacity: state === "unlocking" ? 0 : 1 }}
+        transition={{ duration: 0.8 }}
+        style={{
+          background:
+            "radial-gradient(circle, transparent 30%, #060309 85%)",
+        }}
+      />
+
       {/* Noise texture */}
       <div
-        className="absolute inset-0 pointer-events-none z-[1]"
+        className="absolute inset-0 pointer-events-none z-[2]"
         style={{ backgroundImage: NOISE_SVG, opacity: 0.025 }}
       />
 
@@ -67,31 +120,92 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
         }}
       />
 
-      {/* Premium card */}
+      {/* Premium card wrapper */}
       <div
         ref={cardRef}
-        className="relative z-[2] w-[300px] flex flex-col items-center"
+        className="relative z-[3] w-[300px]"
         style={{
-          background:
-            "linear-gradient(160deg, rgba(28, 18, 50, 0.85), rgba(18, 10, 35, 0.95))",
-          backdropFilter: "blur(30px) saturate(180%)",
-          WebkitBackdropFilter: "blur(30px) saturate(180%)",
-          border: "1px solid rgba(255, 255, 255, 0.06)",
           borderRadius: "32px",
-          padding: "16px 16px 28px",
-          boxShadow:
-            "0 24px 60px rgba(0,0,0,0.6), 0 8px 24px rgba(52,17,126,0.15), inset 0 1px 0 rgba(255,255,255,0.05)",
           transformOrigin: "center center",
         }}
       >
-        {/* Top highlight line */}
+        {/* Soft diffused liquid outer glow - counter-rotates and has soft liquid gradient */}
         <div
-          className="absolute top-0 left-[30%] right-[30%] h-px"
+          className="absolute pointer-events-none"
           style={{
+            width: "580px",
+            height: "580px",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%) rotate(0deg)",
+            borderRadius: "50%",
             background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+              "conic-gradient(from 0deg, transparent 20%, rgba(114, 230, 255, 0.12) 40%, rgba(169, 129, 255, 0.22) 55%, rgba(244, 166, 198, 0.12) 70%, transparent 85%)",
+            filter: "blur(35px)",
+            opacity: 0.24,
+            animation: "spinGlowRev 12s linear infinite",
+            transformOrigin: "center center",
           }}
         />
+
+        {/* Overflow-hidden border mask container */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{
+            borderRadius: "32px",
+            padding: "1.5px",
+            background: "rgba(123, 69, 240, 0.08)",
+            boxShadow:
+              "0 24px 60px rgba(0,0,0,0.65), 0 8px 24px rgba(52,17,126,0.12)",
+          }}
+        >
+          {/* Sharp rotating border light ray (Liquid Glass Effect) */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: "580px",
+              height: "580px",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%) rotate(0deg)",
+              background:
+                "conic-gradient(from 0deg, transparent 40%, #72E6FF 48%, #FFFFFF 50%, #A981FF 52%, #F4A6C6 60%, transparent 70%)",
+              animation: "spinGlow 7s linear infinite",
+              transformOrigin: "center center",
+            }}
+          />
+
+          {/* Card inner glassmorphic body */}
+          <div
+            className="relative w-full flex flex-col items-center overflow-hidden z-[1]"
+            style={{
+              background:
+                "linear-gradient(160deg, rgba(28, 18, 50, 0.88), rgba(18, 10, 35, 0.96))",
+              backdropFilter: "blur(40px) saturate(180%)",
+              WebkitBackdropFilter: "blur(40px) saturate(180%)",
+              borderRadius: "31px",
+              padding: "16px 16px 28px",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            {/* Glass reflection sheen */}
+            <div
+              className="absolute inset-0 pointer-events-none z-[2]"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 40%, transparent 100%)",
+                borderRadius: "31px",
+              }}
+            />
+
+            {/* Top highlight line */}
+            <div
+              className="absolute top-0 left-[30%] right-[30%] h-px z-[3]"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+              }}
+            />
 
         {/* Photo container */}
         <div
@@ -257,6 +371,8 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
       {/* Unlock sequence overlay */}
       {state === "unlocking" && (

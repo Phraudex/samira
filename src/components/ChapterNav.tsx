@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { easings } from "@/lib/animations";
+import gsap from "gsap";
 
 const chapters = [
   { id: "chapitre-1", number: 1, title: "Qui est Samira ?" },
@@ -30,8 +31,20 @@ export default function ChapterNav({ isOpen, onClose }: ChapterNavProps) {
   const handleChapterClick = (id: string) => {
     onClose();
     setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 320);
+      const targetEl = document.getElementById(id);
+      if (targetEl) {
+        const targetY = targetEl.getBoundingClientRect().top + window.scrollY;
+        const scrollObj = { y: window.scrollY };
+        gsap.to(scrollObj, {
+          y: targetY,
+          duration: 1.2,
+          ease: "power3.out",
+          onUpdate: () => {
+            window.scrollTo(0, scrollObj.y);
+          },
+        });
+      }
+    }, 350);
   };
 
   return (
