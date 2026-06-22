@@ -9,8 +9,8 @@ export interface BibliothequeItem {
 export const bibliotheque: BibliothequeItem[] = [
   {
     id: "01",
-    titre: "Tenue Violette Tabaski",
-    description: "Tenue islamique de fête violette, playbacks en Dioula.",
+    titre: "Tabaski Kani",
+    description: "Élégance festive lors de la célébration de la Tabaski.",
     photos: [
       "/bibliotheque/01_tenue_violette_tabaski/P01.JPG",
       "/bibliotheque/01_tenue_violette_tabaski/P13.JPG",
@@ -53,8 +53,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "03",
-    titre: "Restaurant en Jaune & Marron",
-    description: "Sortie restaurant, robe jaune et foulard marron.",
+    titre: "Restaurant Kopa",
+    description: "Un moment convivial et chaleureux partagé au restaurant.",
     photos: [
       "/bibliotheque/03_tenue_jaune_restaurant/P09.JPG",
       "/bibliotheque/03_tenue_jaune_restaurant/P10.JPG",
@@ -66,7 +66,7 @@ export const bibliotheque: BibliothequeItem[] = [
   {
     id: "04",
     titre: "Rose Ramadan",
-    description: "Fête du Ramadan, tenue rose et voiture.",
+    description: "Souvenirs de la fête du Ramadan en tenue rose.",
     photos: [
       "/bibliotheque/04_tenue_rose_ramadan/P32.jpg",
       "/bibliotheque/04_tenue_rose_ramadan/P33.jpg",
@@ -87,8 +87,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "05",
-    titre: "Chemise Jaune, Foulard Bleu",
-    description: "Selfies Snapchat, chemise jaune sur t-shirt noir.",
+    titre: "Élégance Casual",
+    description: "Un style du quotidien alliant simplicité et couleurs vives.",
     photos: [
       "/bibliotheque/05_chemise_jaune_foulard_bleu/P41.JPG",
       "/bibliotheque/05_chemise_jaune_foulard_bleu/P42.JPG",
@@ -101,8 +101,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "06",
-    titre: "Treillis Militaire au Salon",
-    description: "Ensemble treillis, playbacks et poses dans un salon.",
+    titre: "Force & Douceur",
+    description: "Un instant de calme et d'assurance dans un salon chaleureux.",
     photos: [
       "/bibliotheque/06_treillis_militaire_salon/P44.png",
       "/bibliotheque/06_treillis_militaire_salon/P45.JPG",
@@ -126,8 +126,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "07",
-    titre: "Robe Noire aux Papillons",
-    description: "Robe noire, foulard marron orné de papillons roses.",
+    titre: "Élégance Légère",
+    description: "Un mouvement gracieux souligné par de fins motifs de papillons.",
     photos: [
       "/bibliotheque/07_robe_noire_foulard_papillons/P48.JPG",
       "/bibliotheque/07_robe_noire_foulard_papillons/P49.JPG",
@@ -143,8 +143,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "08",
-    titre: "Foulard Noir & Rose Violet",
-    description: "Foulard noir superposé sur foulard violet-rose.",
+    titre: "Jeux de Nuances",
+    description: "Une superposition délicate de foulards aux tons complémentaires.",
     photos: [
       "/bibliotheque/08_foulard_noir_et_rose_violet/P05.JPG",
       "/bibliotheque/08_foulard_noir_et_rose_violet/P06.JPG",
@@ -155,8 +155,8 @@ export const bibliotheque: BibliothequeItem[] = [
   },
   {
     id: "09",
-    titre: "Complet Blanc, Foulard à Motifs",
-    description: "Ensemble blanc avec foulard rose à motifs, pose de dos.",
+    titre: "Pureté Blanche",
+    description: "L'éclat d'un ensemble blanc contrasté par un foulard aux motifs délicats.",
     photos: [
       "/bibliotheque/09_complet_blanc_foulard_rose_motifs/P39.JPG",
       "/bibliotheque/09_complet_blanc_foulard_rose_motifs/P40.JPG",
@@ -166,7 +166,7 @@ export const bibliotheque: BibliothequeItem[] = [
   {
     id: "10",
     titre: "La Casquette par-dessus le Foulard",
-    description: "Style décontracté en voiture, casquette sur le foulard.",
+    description: "Plusieurs styles qui lui vont à merveille, alliant modernité et tradition.",
     photos: [],
     videos: [
       "/videos/V18.MP4",
