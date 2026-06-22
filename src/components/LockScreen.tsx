@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ArrowRight, Check } from "lucide-react";
@@ -18,14 +18,49 @@ interface LockScreenProps {
 export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
   const [state, setState] = useState<LockState>("idle");
   const [password, setPassword] = useState("");
+  const [attempts, setAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const photoWrapperRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Check stored lock on mount
+  useEffect(() => {
+    const storedLock = localStorage.getItem("lock_until");
+    if (storedLock) {
+      const parsed = parseInt(storedLock, 10);
+      if (parsed > Date.now()) {
+        setLockUntil(parsed);
+      } else {
+        localStorage.removeItem("lock_until");
+      }
+    }
+  }, []);
+
+  // Update countdown timer
+  useEffect(() => {
+    if (!lockUntil) return;
+    const updateCountdown = () => {
+      const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockUntil(null);
+        localStorage.removeItem("lock_until");
+        setAttempts(0);
+      } else {
+        setTimeLeft(remaining);
+      }
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [lockUntil]);
+
   const handleSubmit = useCallback(async () => {
     if (state === "unlocking") return;
+    if (lockUntil && Date.now() < lockUntil) return;
 
     const trimmed = password.trim().toLowerCase();
     
@@ -38,6 +73,14 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
     if (hashed !== content.lock.passwordHash) {
       setState("error");
       setTimeout(() => setState("idle"), 600);
+      
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      if (newAttempts >= 5) {
+        const lockDuration = Date.now() + 5 * 60 * 1000; // 5 minutes lock
+        setLockUntil(lockDuration);
+        localStorage.setItem("lock_until", lockDuration.toString());
+      }
       return;
     }
 
@@ -46,7 +89,7 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       setTimeout(() => navigator.vibrate(50), 200);
     }
-  }, [password, state]);
+  }, [password, state, attempts, lockUntil]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSubmit();
@@ -289,12 +332,14 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
           <p
             className="font-body text-xs font-light"
             style={{
-              color: "rgba(255,255,255,0.4)",
+              color: lockUntil && Date.now() < lockUntil ? "#E8729F" : "rgba(255,255,255,0.4)",
               letterSpacing: "0.4px",
               marginBottom: "22px",
             }}
           >
-            {content.lock.subtitle}
+            {lockUntil && Date.now() < lockUntil
+              ? `Trop d'essais. Patientez ${timeLeft}s`
+              : content.lock.subtitle}
           </p>
 
           {/* Input + Button stacked */}
@@ -315,8 +360,8 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={state === "unlocking"}
-                placeholder="••••••"
+                disabled={state === "unlocking" || (lockUntil !== null && Date.now() < lockUntil)}
+                placeholder={lockUntil && Date.now() < lockUntil ? "BLOQUÉ" : "••••••"}
                 autoComplete="off"
                 className="lock-input w-full h-[46px] rounded-[14px] px-4 font-body text-sm font-normal text-white text-center outline-none transition-all duration-300"
                 style={{
@@ -324,6 +369,8 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
                   border:
                     state === "error"
                       ? "1px solid rgba(255, 80, 80, 0.5)"
+                      : lockUntil && Date.now() < lockUntil
+                      ? "1px solid rgba(232, 114, 159, 0.35)"
                       : "1px solid rgba(255,255,255,0.08)",
                   letterSpacing: "2px",
                 }}
@@ -333,18 +380,18 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
             {/* Submit button */}
             <motion.button
               onClick={handleSubmit}
-              disabled={state === "unlocking"}
+              disabled={state === "unlocking" || (lockUntil !== null && Date.now() < lockUntil)}
               className="group w-full h-[46px] rounded-[14px] font-body text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-default"
               style={{
-                background: "#fff",
-                color: "#0a0515",
+                background: lockUntil && Date.now() < lockUntil ? "rgba(255,255,255,0.08)" : "#fff",
+                color: lockUntil && Date.now() < lockUntil ? "rgba(255,255,255,0.25)" : "#0a0515",
                 letterSpacing: "0.5px",
                 border: "none",
               }}
               whileHover={
-                state !== "unlocking" ? { y: -1, backgroundColor: "#f0f0f0" } : {}
+                state !== "unlocking" && !(lockUntil && Date.now() < lockUntil) ? { y: -1, backgroundColor: "#f0f0f0" } : {}
               }
-              whileTap={state !== "unlocking" ? { scale: 0.97 } : {}}
+              whileTap={state !== "unlocking" && !(lockUntil && Date.now() < lockUntil) ? { scale: 0.97 } : {}}
               transition={{ duration: 0.3 }}
             >
               <AnimatePresence mode="wait">
