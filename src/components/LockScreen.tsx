@@ -436,35 +436,23 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
               }}
             />
             {/* Typography Title */}
-            <div className="flex flex-col items-center gap-3">
-              <motion.h1
-                variants={titleContainerVariants}
-                initial="initial"
-                animate="animate"
-                exit={{ opacity: 0, scale: 1.08, filter: "blur(6px)", transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }}
-                className="font-display text-[clamp(36px,9vw,56px)] font-light text-white tracking-[0.3em] pl-[0.3em]"
-              >
-                {nameLetters.map((char, i) => (
-                  <motion.span
-                    key={i}
-                    variants={titleLetterVariants}
-                    className="inline-block"
-                  >
-                    {char}
-                  </motion.span>
-                ))}
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, letterSpacing: "4px" }}
-                animate={{ opacity: 0.4, letterSpacing: "8px" }}
-                transition={{ delay: 0.8, duration: 1.2, ease: "easeOut" }}
-                exit={{ opacity: 0, transition: { duration: 0.5 } }}
-                className="font-body text-[10px] font-semibold text-white uppercase tracking-[8px] pl-[8px]"
-              >
-                Le Livre
-              </motion.p>
-            </div>
+            <motion.h1
+              variants={titleContainerVariants}
+              initial="initial"
+              animate="animate"
+              exit={{ opacity: 0, scale: 1.08, filter: "blur(6px)", transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }}
+              className="font-display text-[clamp(36px,9vw,56px)] font-light text-white tracking-[0.3em] pl-[0.3em]"
+            >
+              {nameLetters.map((char, i) => (
+                <motion.span
+                  key={i}
+                  variants={titleLetterVariants}
+                  className="inline-block"
+                >
+                  {char}
+                </motion.span>
+              ))}
+            </motion.h1>
           </motion.div>
         ) : (
           <motion.div

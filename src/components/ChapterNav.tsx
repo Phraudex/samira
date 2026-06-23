@@ -76,12 +76,6 @@ export default function ChapterNav({ isOpen, onClose }: ChapterNavProps) {
             {/* Header */}
             <div className="flex items-center justify-between pt-16 pb-10">
               <div>
-                <p
-                  className="font-body font-semibold uppercase"
-                  style={{ fontSize: "10px", letterSpacing: "3px", color: "#A981FF", marginBottom: "6px" }}
-                >
-                  Le Livre
-                </p>
                 <h2
                   className="font-display font-light text-white"
                   style={{ fontSize: "28px", letterSpacing: "-0.02em", lineHeight: 1.1 }}

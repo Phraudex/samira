@@ -197,7 +197,7 @@ export interface Chapter {
 
 export const content = {
   lock: {
-    title: "Le Livre, Samira",
+    title: "Samira",
     subtitle: "Entre ton mot de passe",
     button: "Entrer",
     passwordHash: "b6e064d022b05b5b2f6929776d23639e1dda7d46372d64503df213fde5bd6e2a",
