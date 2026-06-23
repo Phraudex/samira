@@ -2,7 +2,7 @@
   "name": "Le Livre, Samira",
   "short_name": "Samira",
   "description": "Un livre numérique dédié à Samira",
-  "start_url": "/",
+  "start_url": "/?standalone=true",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

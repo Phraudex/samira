@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cormorant, josefin } from "@/styles/fonts";
 import "./globals.css";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -76,6 +77,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased overflow-x-hidden" style={{ backgroundColor: "#060309" }}>
         {children}
+        <PwaInstallPrompt />
       </body>
     </html>
   );
