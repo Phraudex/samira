@@ -79,46 +79,28 @@ export default function SouvenirCard({
             sizes="(max-width:1024px) 50vw, 33vw"
           />
         ) : hasVideos ? (
-          <>
-            <video
-              src={`${item.videos[0]}#t=0.5`}
-              preload="metadata"
-              playsInline
-              muted
+          <div className="absolute inset-0 flex items-center justify-center z-[2]">
+            <div
               style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                opacity: 0.6,
-                pointerEvents: "none",
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                background: "rgba(123, 69, 240, 0.8)",
+                border: "1px solid rgba(123, 69, 240, 0.9)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 16px rgba(123,69,240,0.4)",
               }}
-            />
-            {/* Play overlay button on top of the video thumbnail */}
-            <div className="absolute inset-0 flex items-center justify-center z-[2]">
-              <div
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  background: "rgba(123, 69, 240, 0.8)",
-                  border: "1px solid rgba(123, 69, 240, 0.9)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 0 16px rgba(123,69,240,0.4)",
-                }}
-              >
-                <Play
-                  size={18}
-                  strokeWidth={1.5}
-                  fill="white"
-                  style={{ color: "white", marginLeft: "2px" }}
-                />
-              </div>
+            >
+              <Play
+                size={18}
+                strokeWidth={1.5}
+                fill="white"
+                style={{ color: "white", marginLeft: "2px" }}
+              />
             </div>
-          </>
+          </div>
         ) : (
           // Video-only series fallback (if neither photos nor videos)
           <div className="absolute inset-0 flex items-center justify-center">

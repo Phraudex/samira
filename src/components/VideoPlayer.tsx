@@ -72,14 +72,12 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
   useEffect(() => {
     if (!isOpen) return;
 
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === " ") { e.preventDefault(); togglePlay(); }
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
   }, [isOpen, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -521,7 +519,7 @@ function VideoPlayerRenderPortal({
 
           <motion.div
             className="relative flex flex-col"
-            style={{ width: "min(90vw, calc(70dvh * 9 / 16), 400px)", maxHeight: "90dvh" }}
+            style={{ width: "min(90vw, 400px)", maxHeight: "90dvh" }}
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}
@@ -530,7 +528,7 @@ function VideoPlayerRenderPortal({
           >
             <div
               className="relative overflow-hidden"
-              style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", width: "100%", cursor: "pointer" }}
+              style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", width: "100%", maxHeight: "75dvh", cursor: "pointer", flexShrink: 0 }}
               onClick={togglePlay}
             >
               <video
@@ -588,7 +586,7 @@ function VideoPlayerRenderPortal({
               />
             </div>
 
-            <div className="flex flex-col gap-3 mt-4 px-1">
+            <div className="flex flex-col gap-3 mt-4 px-1" style={{ flexShrink: 0 }}>
               <ProgressSlider
                 progress={progress}
                 fillRef={fillRef}
