@@ -219,14 +219,271 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
     bar.addEventListener("pointercancel", onUp);
   }, [performSeek]);
 
-  function formatTime(s: number) {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  }
+function formatTime(time: number) {
+  if (isNaN(time)) return "00:00";
+  const m = Math.floor(time / 60).toString().padStart(2, "0");
+  const sec = Math.floor(time % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
 
-  if (!mounted) return null;
+interface ErrorDisplayProps {
+  videoError: string | null;
+  onRetry: () => void;
+}
 
+function ErrorDisplay({ videoError, onRetry }: ErrorDisplayProps) {
+  if (!videoError) return null;
+  return (
+    <div 
+      className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 px-6 text-center z-10"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="text-red-400 text-sm font-body mb-4">{videoError}</p>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRetry();
+        }}
+        className="px-4 py-2 bg-purple-600/30 border border-purple-500/50 hover:bg-purple-600/50 text-purple-200 text-xs font-body rounded-lg transition-colors cursor-pointer"
+      >
+        Réessayer
+      </button>
+    </div>
+  );
+}
+
+interface BufferingSpinnerProps {
+  isBuffering: boolean;
+  videoError: string | null;
+}
+
+function BufferingSpinner({ isBuffering, videoError }: BufferingSpinnerProps) {
+  return (
+    <AnimatePresence>
+      {isBuffering && !videoError && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none z-[3]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          style={{ background: "rgba(0,0,0,0.15)" }}
+        >
+          <div
+            className="animate-spin"
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              border: "3px solid rgba(169, 129, 255, 0.2)",
+              borderTopColor: "#A981FF",
+            }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+interface PlayOverlayProps {
+  isPlaying: boolean;
+  isScrubbing: boolean;
+  videoError: string | null;
+  togglePlay: () => void;
+}
+
+function PlayOverlay({ isPlaying, isScrubbing, videoError, togglePlay }: PlayOverlayProps) {
+  return (
+    <AnimatePresence>
+      {!isPlaying && !isScrubbing && !videoError && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: easings.cinematic }}
+          style={{ background: "rgba(0,0,0,0.25)" }}
+          onClick={togglePlay}
+        >
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "50%",
+              background: "rgba(123,69,240,0.85)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 0 30px rgba(123,69,240,0.4)",
+            }}
+          >
+            <Play size={26} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "3px" }} />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+interface ProgressSliderProps {
+  progress: number;
+  fillRef: React.RefObject<HTMLDivElement | null>;
+  handleRef: React.RefObject<HTMLDivElement | null>;
+  onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+}
+
+function ProgressSlider({ progress, fillRef, handleRef, onPointerDown }: ProgressSliderProps) {
+  return (
+    <div
+      role="slider"
+      aria-valuenow={Math.round(progress * 100)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Progression vidéo"
+      style={{
+        position: "relative",
+        height: "32px",
+        display: "flex",
+        alignItems: "center",
+        cursor: "pointer",
+        touchAction: "none",
+      }}
+      onPointerDown={onPointerDown}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: "6px",
+          background: "rgba(255,255,255,0.12)",
+          borderRadius: "9999px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          ref={fillRef}
+          style={{
+            height: "100%",
+            borderRadius: "9999px",
+            background: "linear-gradient(90deg, #7B45F0, #A981FF)",
+            width: `${progress * 100}%`,
+            transition: "width 0.05s linear",
+          }}
+        />
+      </div>
+      <div
+        ref={handleRef}
+        style={{
+          position: "absolute",
+          left: `${progress * 100}%`,
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "16px",
+          height: "16px",
+          borderRadius: "50%",
+          background: "#A981FF",
+          boxShadow: "0 0 8px rgba(123,69,240,0.5)",
+          border: "2px solid rgba(255,255,255,0.9)",
+          pointerEvents: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+interface ControlsRowProps {
+  progress: number;
+  duration: number;
+  isPlaying: boolean;
+  togglePlay: () => void;
+  timeTextRef: React.RefObject<HTMLParagraphElement | null>;
+}
+
+function ControlsRow({ progress, duration, isPlaying, togglePlay, timeTextRef }: ControlsRowProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <p 
+        ref={timeTextRef}
+        style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-body)", letterSpacing: "0.5px" }}
+      >
+        {formatTime(progress * duration)} / {formatTime(duration)}
+      </p>
+      <button
+        onClick={togglePlay}
+        aria-label={isPlaying ? "Pause" : "Lecture"}
+        style={{
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "rgba(123,69,240,0.25)",
+          border: "1px solid rgba(123,69,240,0.35)",
+          color: "#A981FF",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {isPlaying
+          ? <Pause size={18} strokeWidth={1.5} />
+          : <Play size={18} strokeWidth={1.5} style={{ marginLeft: "2px" }} />
+        }
+      </button>
+    </div>
+  );
+}
+
+interface VideoPlayerRenderPortalProps {
+  src: string;
+  isOpen: boolean;
+  onClose: () => void;
+  zIndex: number;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  isPlaying: boolean;
+  setIsPlaying: (v: boolean) => void;
+  handleTimeUpdate: () => void;
+  handleLoadedMetadata: () => void;
+  handleEnded: () => void;
+  setIsBuffering: (v: boolean) => void;
+  handleSeeked: () => void;
+  videoError: string | null;
+  setVideoError: (err: string | null) => void;
+  isBuffering: boolean;
+  togglePlay: () => void;
+  progress: number;
+  fillRef: React.RefObject<HTMLDivElement | null>;
+  handleRef: React.RefObject<HTMLDivElement | null>;
+  handlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  duration: number;
+  timeTextRef: React.RefObject<HTMLParagraphElement | null>;
+  isScrubbingCurrent: boolean;
+}
+
+function VideoPlayerRenderPortal({
+  src,
+  isOpen,
+  onClose,
+  zIndex,
+  videoRef,
+  isPlaying,
+  setIsPlaying,
+  handleTimeUpdate,
+  handleLoadedMetadata,
+  handleEnded,
+  setIsBuffering,
+  handleSeeked,
+  videoError,
+  setVideoError,
+  isBuffering,
+  togglePlay,
+  progress,
+  fillRef,
+  handleRef,
+  handlePointerDown,
+  duration,
+  timeTextRef,
+  isScrubbingCurrent,
+}: VideoPlayerRenderPortalProps) {
   return createPortal(
     <AnimatePresence>
       {isOpen && (
@@ -239,7 +496,6 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
           style={{ zIndex, background: "rgba(0,0,0,0.97)", touchAction: "none" }}
           onClick={onClose}
         >
-          {/* Close */}
           <button
             onClick={onClose}
             aria-label="Fermer"
@@ -263,7 +519,6 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
             <X size={20} strokeWidth={1.5} />
           </button>
 
-          {/* Video + controls */}
           <motion.div
             className="relative flex flex-col"
             style={{ width: "min(90vw, calc(70dvh * 9 / 16), 400px)", maxHeight: "90dvh" }}
@@ -273,7 +528,6 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
             transition={{ duration: 0.35, ease: easings.cinematic }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Video */}
             <div
               className="relative overflow-hidden"
               style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", width: "100%", cursor: "pointer" }}
@@ -313,179 +567,77 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
                 <source src={src} type="video/mp4" />
               </video>
 
-              {/* Error display */}
-              {videoError && (
-                <div 
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 px-6 text-center z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="text-red-400 text-sm font-body mb-4">{videoError}</p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setVideoError(null);
-                      if (videoRef.current) {
-                        videoRef.current.load();
-                      }
-                    }}
-                    className="px-4 py-2 bg-purple-600/30 border border-purple-500/50 hover:bg-purple-600/50 text-purple-200 text-xs font-body rounded-lg transition-colors cursor-pointer"
-                  >
-                    Réessayer
-                  </button>
-                </div>
-              )}
+              <ErrorDisplay
+                videoError={videoError}
+                onRetry={() => {
+                  setVideoError(null);
+                  if (videoRef.current) {
+                    videoRef.current.load();
+                  }
+                }}
+              />
 
-              {/* Buffering spinner */}
-              <AnimatePresence>
-                {isBuffering && !videoError && (
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-[3]"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    style={{ background: "rgba(0,0,0,0.15)" }}
-                  >
-                    <div
-                      className="animate-spin"
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "50%",
-                        border: "3px solid rgba(169, 129, 255, 0.2)",
-                        borderTopColor: "#A981FF",
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <BufferingSpinner isBuffering={isBuffering} videoError={videoError} />
 
-              {/* Play/pause overlay */}
-              <AnimatePresence>
-                {!isPlaying && !isScrubbing.current && !videoError && (
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2, ease: easings.cinematic }}
-                    style={{ background: "rgba(0,0,0,0.25)" }}
-                  >
-                    <div
-                      style={{
-                        width: "64px",
-                        height: "64px",
-                        borderRadius: "50%",
-                        background: "rgba(123,69,240,0.85)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 30px rgba(123,69,240,0.4)",
-                      }}
-                    >
-                      <Play size={26} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "3px" }} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <PlayOverlay
+                isPlaying={isPlaying}
+                isScrubbing={isScrubbingCurrent}
+                videoError={videoError}
+                togglePlay={togglePlay}
+              />
             </div>
 
-            {/* Controls */}
             <div className="flex flex-col gap-3 mt-4 px-1">
-              {/* Progress bar — large touch target with drag support */}
-              <div
-                role="slider"
-                aria-valuenow={Math.round(progress * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="Progression vidéo"
-                style={{
-                  position: "relative",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  cursor: "pointer",
-                  touchAction: "none",
-                }}
+              <ProgressSlider
+                progress={progress}
+                fillRef={fillRef}
+                handleRef={handleRef}
                 onPointerDown={handlePointerDown}
-              >
-                {/* Track */}
-                <div
-                  style={{
-                    width: "100%",
-                    height: "6px",
-                    background: "rgba(255,255,255,0.12)",
-                    borderRadius: "9999px",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Fill */}
-                  <div
-                    ref={fillRef}
-                    style={{
-                      height: "100%",
-                      borderRadius: "9999px",
-                      background: "linear-gradient(90deg, #7B45F0, #A981FF)",
-                      width: `${progress * 100}%`,
-                      transition: "width 0.05s linear",
-                    }}
-                  />
-                </div>
-                {/* Scrub handle */}
-                <div
-                  ref={handleRef}
-                  style={{
-                    position: "absolute",
-                    left: `${progress * 100}%`,
-                    top: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "16px",
-                    height: "16px",
-                    borderRadius: "50%",
-                    background: "#A981FF",
-                    boxShadow: "0 0 8px rgba(123,69,240,0.5)",
-                    border: "2px solid rgba(255,255,255,0.9)",
-                    pointerEvents: "none",
-                  }}
-                />
-              </div>
+              />
 
-              {/* Time + Play button */}
-              <div className="flex items-center justify-between">
-                <p 
-                  ref={timeTextRef}
-                  style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-body)", letterSpacing: "0.5px" }}
-                >
-                  {formatTime(progress * duration)} / {formatTime(duration)}
-                </p>
-                <button
-                  onClick={togglePlay}
-                  aria-label={isPlaying ? "Pause" : "Lecture"}
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "50%",
-                    background: "rgba(123,69,240,0.25)",
-                    border: "1px solid rgba(123,69,240,0.35)",
-                    color: "#A981FF",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {isPlaying
-                    ? <Pause size={18} strokeWidth={1.5} />
-                    : <Play size={18} strokeWidth={1.5} style={{ marginLeft: "2px" }} />
-                  }
-                </button>
-              </div>
+              <ControlsRow
+                progress={progress}
+                duration={duration}
+                isPlaying={isPlaying}
+                togglePlay={togglePlay}
+                timeTextRef={timeTextRef}
+              />
             </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
     document.body
+  );
+}
+
+  if (!mounted) return null;
+
+  return (
+    <VideoPlayerRenderPortal
+      src={src}
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex={zIndex}
+      videoRef={videoRef}
+      isPlaying={isPlaying}
+      setIsPlaying={setIsPlaying}
+      handleTimeUpdate={handleTimeUpdate}
+      handleLoadedMetadata={handleLoadedMetadata}
+      handleEnded={handleEnded}
+      setIsBuffering={setIsBuffering}
+      handleSeeked={handleSeeked}
+      videoError={videoError}
+      setVideoError={setVideoError}
+      isBuffering={isBuffering}
+      togglePlay={togglePlay}
+      progress={progress}
+      fillRef={fillRef}
+      handleRef={handleRef}
+      handlePointerDown={handlePointerDown}
+      duration={duration}
+      timeTextRef={timeTextRef}
+      isScrubbingCurrent={isScrubbing.current}
+    />
   );
 }

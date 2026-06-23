@@ -81,6 +81,203 @@ interface SouvenirModalProps {
   onClose: () => void;
 }
 
+interface SouvenirHeaderProps {
+  onClose: () => void;
+  titre: string;
+  photosLength: number;
+  videosLength: number;
+}
+
+function SouvenirHeader({ onClose, titre, photosLength, videosLength }: SouvenirHeaderProps) {
+  const mediaCountText = [
+    photosLength > 0 ? `${photosLength} photo${photosLength > 1 ? "s" : ""}` : "",
+    videosLength > 0 ? `${videosLength} vidéo${videosLength > 1 ? "s" : ""}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
+      className="flex items-center gap-4 px-5 py-4"
+      style={{ borderBottom: "1px solid rgba(123,69,240,0.1)", flexShrink: 0 }}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Retour"
+        style={{
+          width: "40px",
+          height: "40px",
+          borderRadius: "12px",
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "rgba(255,255,255,0.6)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <ArrowLeft size={18} strokeWidth={1.5} />
+      </button>
+      <div className="min-w-0">
+        <p
+          className="font-body font-semibold uppercase"
+          style={{ fontSize: "9px", letterSpacing: "2.5px", color: "#A981FF" }}
+        >
+          Souvenir
+        </p>
+        <h2
+          className="font-display font-normal text-white truncate"
+          style={{ fontSize: "20px", lineHeight: 1.2, letterSpacing: "-0.01em" }}
+        >
+          {titre}
+        </h2>
+      </div>
+      <div className="ml-auto shrink-0">
+        <p
+          className="font-body"
+          style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.3px" }}
+        >
+          {mediaCountText}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface MediaGridPhotosProps {
+  photos: string[];
+  onPhotoClick: (index: number) => void;
+}
+
+function MediaGridPhotos({ photos, onPhotoClick }: MediaGridPhotosProps) {
+  if (photos.length === 0) return null;
+  return (
+    <div className="mb-6">
+      <p
+        className="font-body font-semibold uppercase mb-3"
+        style={{ fontSize: "9px", letterSpacing: "2.5px", color: "rgba(169,129,255,0.5)" }}
+      >
+        Photos
+      </p>
+      <div style={{ columns: "2", columnGap: "8px" }}>
+        {photos.map((src, i) => (
+          <button
+            key={src}
+            onClick={() => onPhotoClick(i)}
+            style={{
+              display: "block",
+              width: "100%",
+              marginBottom: "8px",
+              borderRadius: "12px",
+              overflow: "hidden",
+              cursor: "pointer",
+              border: "none",
+              padding: 0,
+              breakInside: "avoid",
+            }}
+            aria-label={`Photo ${i + 1}`}
+          >
+            <Image
+              src={src}
+              alt="Samira"
+              width={400}
+              height={600}
+              style={{ width: "100%", height: "auto", display: "block" }}
+              sizes="45vw"
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface MediaGridVideosProps {
+  videos: string[];
+  onVideoClick: (src: string) => void;
+}
+
+function MediaGridVideos({ videos, onVideoClick }: MediaGridVideosProps) {
+  if (videos.length === 0) return null;
+  return (
+    <div>
+      <p
+        className="font-body font-semibold uppercase mb-3"
+        style={{ fontSize: "9px", letterSpacing: "2.5px", color: "rgba(232,114,159,0.5)" }}
+      >
+        Vidéos
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        {videos.map((videoSrc, i) => (
+          <button
+            key={videoSrc}
+            onClick={() => onVideoClick(videoSrc)}
+            style={{
+              display: "block",
+              width: "100%",
+              borderRadius: "12px",
+              overflow: "hidden",
+              cursor: "pointer",
+              border: "none",
+              padding: 0,
+              position: "relative",
+              background: "transparent",
+            }}
+            aria-label={`Vidéo ${i + 1}`}
+          >
+            <div
+              style={{
+                aspectRatio: "9/16",
+                background: "linear-gradient(135deg, rgba(52,17,126,0.4), rgba(6,3,9,0.8))",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                position: "relative",
+              }}
+            >
+              <LazyVideoThumbnail src={videoSrc} index={i} />
+              
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 2,
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  background: "rgba(123,69,240,0.85)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 0 20px rgba(123,69,240,0.4)",
+                }}
+              >
+                <Play size={18} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "2px" }} />
+              </div>
+              <p
+                style={{
+                  position: "relative",
+                  zIndex: 2,
+                  fontSize: "10px",
+                  color: "rgba(255,255,255,0.7)",
+                  fontFamily: "var(--font-body)",
+                  letterSpacing: "0.5px",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -109,14 +306,12 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
     };
   }, [isOpen]);
 
-  // Reset transition state when closed
   useEffect(() => {
     if (!isOpen) {
       setIsTransitionFinished(false);
     }
   }, [isOpen]);
 
-  // Reset inner state when a new item opens
   useEffect(() => {
     setLightboxIndex(null);
     setActiveVideo(null);
@@ -184,182 +379,26 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
                 }}
               />
 
-              {/* Header */}
-              <div
-                className="flex items-center gap-4 px-5 py-4"
-                style={{ borderBottom: "1px solid rgba(123,69,240,0.1)", flexShrink: 0 }}
-              >
-                <button
-                  onClick={onClose}
-                  aria-label="Retour"
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "12px",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "rgba(255,255,255,0.6)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <ArrowLeft size={18} strokeWidth={1.5} />
-                </button>
-                <div className="min-w-0">
-                  <p
-                    className="font-body font-semibold uppercase"
-                    style={{ fontSize: "9px", letterSpacing: "2.5px", color: "#A981FF" }}
-                  >
-                    Souvenir
-                  </p>
-                  <h2
-                    className="font-display font-normal text-white truncate"
-                    style={{ fontSize: "20px", lineHeight: 1.2, letterSpacing: "-0.01em" }}
-                  >
-                    {localItem.titre}
-                  </h2>
-                </div>
-                {/* Media count */}
-                <div className="ml-auto shrink-0">
-                  <p
-                    className="font-body"
-                    style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.3px" }}
-                  >
-                    {[
-                      localItem.photos.length > 0 ? `${localItem.photos.length} photo${localItem.photos.length > 1 ? "s" : ""}` : "",
-                      localItem.videos.length > 0 ? `${localItem.videos.length} vidéo${localItem.videos.length > 1 ? "s" : ""}` : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-              </div>
+              <SouvenirHeader
+                onClose={onClose}
+                titre={localItem.titre}
+                photosLength={localItem.photos.length}
+                videosLength={localItem.videos.length}
+              />
 
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto px-4 py-5">
                 {isTransitionFinished ? (
                   <>
-                    {/* Photos grid */}
-                    {localItem.photos.length > 0 && (
-                      <div className="mb-6">
-                        <p
-                          className="font-body font-semibold uppercase mb-3"
-                          style={{ fontSize: "9px", letterSpacing: "2.5px", color: "rgba(169,129,255,0.5)" }}
-                        >
-                          Photos
-                        </p>
-                        <div style={{ columns: "2", columnGap: "8px" }}>
-                          {localItem.photos.map((src, i) => (
-                            <button
-                              key={src}
-                              onClick={() => setLightboxIndex(i)}
-                              style={{
-                                display: "block",
-                                width: "100%",
-                                marginBottom: "8px",
-                                borderRadius: "12px",
-                                overflow: "hidden",
-                                cursor: "pointer",
-                                border: "none",
-                                padding: 0,
-                                breakInside: "avoid",
-                              }}
-                              aria-label={`Photo ${i + 1}`}
-                            >
-                              <Image
-                                src={src}
-                                alt="Samira"
-                                width={400}
-                                height={600}
-                                style={{ width: "100%", height: "auto", display: "block" }}
-                                sizes="45vw"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <MediaGridPhotos
+                      photos={localItem.photos}
+                      onPhotoClick={(idx) => setLightboxIndex(idx)}
+                    />
 
-                    {/* Videos grid */}
-                    {localItem.videos.length > 0 && (
-                      <div>
-                        <p
-                          className="font-body font-semibold uppercase mb-3"
-                          style={{ fontSize: "9px", letterSpacing: "2.5px", color: "rgba(232,114,159,0.5)" }}
-                        >
-                          Vidéos
-                        </p>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          {localItem.videos.map((videoSrc, i) => (
-                            <button
-                              key={videoSrc}
-                              onClick={() => setActiveVideo(videoSrc)}
-                              style={{
-                                display: "block",
-                                width: "100%",
-                                borderRadius: "12px",
-                                overflow: "hidden",
-                                cursor: "pointer",
-                                border: "none",
-                                padding: 0,
-                                position: "relative",
-                                background: "transparent",
-                              }}
-                              aria-label={`Vidéo ${i + 1}`}
-                            >
-                              <div
-                                style={{
-                                  aspectRatio: "9/16",
-                                  background: "linear-gradient(135deg, rgba(52,17,126,0.4), rgba(6,3,9,0.8))",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: "8px",
-                                  position: "relative",
-                                }}
-                              >
-                                {/* Video thumbnail — Lazy loaded via IntersectionObserver & staggered delay */}
-                                <LazyVideoThumbnail src={videoSrc} index={i} />
-                                
-                                <div
-                                  style={{
-                                    position: "relative",
-                                    zIndex: 2,
-                                    width: "44px",
-                                    height: "44px",
-                                    borderRadius: "50%",
-                                    background: "rgba(123,69,240,0.85)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    boxShadow: "0 0 20px rgba(123,69,240,0.4)",
-                                  }}
-                                >
-                                  <Play size={18} strokeWidth={1.5} fill="white" style={{ color: "white", marginLeft: "2px" }} />
-                                </div>
-                                <p
-                                  style={{
-                                    position: "relative",
-                                    zIndex: 2,
-                                    fontSize: "10px",
-                                    color: "rgba(255,255,255,0.7)",
-                                    fontFamily: "var(--font-body)",
-                                    letterSpacing: "0.5px",
-                                    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-                                  }}
-                                >
-                                  {String(i + 1).padStart(2, "0")}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <MediaGridVideos
+                      videos={localItem.videos}
+                      onVideoClick={(vSrc) => setActiveVideo(vSrc)}
+                    />
                   </>
                 ) : (
                   <MediaSkeleton />
@@ -370,7 +409,6 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
         )}
       </AnimatePresence>
 
-      {/* Lightbox — above modal */}
       <Lightbox
         images={localItem?.photos ?? []}
         isOpen={lightboxIndex !== null}
@@ -379,7 +417,6 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
         zIndex={60}
       />
 
-      {/* Video player — above modal */}
       <VideoPlayer
         src={activeVideo ?? ""}
         isOpen={activeVideo !== null}

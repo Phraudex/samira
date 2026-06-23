@@ -15,6 +15,289 @@ interface LockScreenProps {
   onUnlockComplete: () => void;
 }
 
+interface LockScreenBackgroundProps {
+  state: LockState;
+}
+
+function LockScreenBackground({ state }: LockScreenBackgroundProps) {
+  return (
+    <>
+      <style>{`
+        @keyframes spinGlow {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+        }
+        @keyframes spinGlowRev {
+          0% {
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+        }
+      `}</style>
+      {/* Background Grid Image with slow breathing scale & unlock fadeout */}
+      <motion.div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        initial={{ opacity: 0, scale: 1.05 }}
+        animate={{
+          opacity: state === "unlocking" ? 0 : 0.45,
+          scale: state === "unlocking" ? 1.08 : [1.02, 1.06, 1.02]
+        }}
+        transition={{
+          opacity: { duration: 0.8, ease: "easeOut" },
+          scale: {
+            duration: state === "unlocking" ? 1.2 : 25,
+            ease: "easeInOut",
+            repeat: state === "unlocking" ? 0 : Infinity
+          }
+        }}
+        style={{
+          backgroundImage: 'url("/images/bg_grid.jpg")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          mixBlendMode: "screen",
+        }}
+      />
+
+      {/* Dark radial vignette to blend grid edges seamlessly into the black background */}
+      <motion.div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        animate={{ opacity: state === "unlocking" ? 0 : 1 }}
+        transition={{ duration: 0.8 }}
+        style={{
+          background:
+            "radial-gradient(circle, transparent 30%, #060309 85%)",
+        }}
+      />
+
+      {/* Noise texture */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[2]"
+        style={{ backgroundImage: NOISE_SVG, opacity: 0.025 }}
+      />
+
+      {/* Ambient glow */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full z-0"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(73, 26, 177, 0.12) 0%, transparent 60%)",
+          filter: "blur(40px)",
+          animation: "ambientBreathe 8s ease-in-out infinite",
+        }}
+      />
+    </>
+  );
+}
+
+interface LockScreenPhotoProps {
+  photoWrapperRef: React.RefObject<HTMLDivElement | null>;
+  glowRef: React.RefObject<HTMLDivElement | null>;
+}
+
+function LockScreenPhoto({ photoWrapperRef, glowRef }: LockScreenPhotoProps) {
+  return (
+    <div
+      className="relative w-full overflow-hidden mb-5"
+      style={{
+        height: "320px",
+        borderRadius: "24px",
+        background: "#0a0515",
+      }}
+    >
+      {/* Photo wrapper — animated by GSAP */}
+      <div
+        ref={photoWrapperRef}
+        className="absolute inset-0"
+        style={{
+          filter: "blur(24px) brightness(0.7) saturate(1.1)",
+          transform: "scale(1.15)",
+        }}
+      >
+        <Image
+          src="/images/samira/P35.jpg"
+          alt="Samira"
+          fill
+          priority
+          sizes="300px"
+          className="object-cover"
+          style={{ objectPosition: "center 25%" }}
+        />
+      </div>
+
+      {/* Photo bottom gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[2]"
+        style={{
+          background:
+            "linear-gradient(180deg, transparent 60%, rgba(10,5,21,0.4) 100%)",
+          borderRadius: "24px",
+        }}
+      />
+
+      {/* Inner ring shadow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          borderRadius: "24px",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+        }}
+      />
+
+      {/* Glow ring — animated by GSAP */}
+      <div
+        ref={glowRef}
+        className="absolute pointer-events-none z-[3]"
+        style={{
+          inset: "-2px",
+          borderRadius: "26px",
+          border: "1px solid transparent",
+        }}
+      />
+    </div>
+  );
+}
+
+interface LockScreenFormProps {
+  state: LockState;
+  password: string;
+  setPassword: (value: string) => void;
+  handleSubmit: () => void;
+  handleKeyDown: (e: React.KeyboardEvent) => void;
+  lockUntil: number | null;
+  timeLeft: number;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+}
+
+function LockScreenForm({
+  state,
+  password,
+  setPassword,
+  handleSubmit,
+  handleKeyDown,
+  lockUntil,
+  timeLeft,
+  inputRef,
+}: LockScreenFormProps) {
+  const isLocked = lockUntil !== null && Date.now() < lockUntil;
+
+  return (
+    <div className="w-full px-2">
+      <h1
+        className="font-display text-[26px] font-medium text-white"
+        style={{
+          letterSpacing: "-0.01em",
+          lineHeight: "1.1",
+          marginBottom: "2px",
+        }}
+      >
+        {content.lock.title}
+      </h1>
+      <p
+        className="font-body text-xs font-light"
+        style={{
+          color: isLocked ? "#E8729F" : "rgba(255,255,255,0.4)",
+          letterSpacing: "0.4px",
+          marginBottom: "22px",
+        }}
+      >
+        {isLocked
+          ? `Trop d'essais. Patientez ${timeLeft}s`
+          : content.lock.subtitle}
+      </p>
+
+      {/* Input + Button stacked */}
+      <div className="flex flex-col items-center gap-3 w-full">
+        {/* Input with shake on error */}
+        <motion.div
+          className="w-full"
+          animate={
+            state === "error"
+              ? { x: [0, -8, 8, -4, 4, 0] }
+              : { x: 0 }
+          }
+          transition={{ duration: 0.5 }}
+        >
+          <input
+            ref={inputRef}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={state === "unlocking" || isLocked}
+            placeholder={isLocked ? "BLOQUÉ" : "••••••"}
+            autoComplete="off"
+            className="lock-input w-full h-[46px] rounded-[14px] px-4 font-body text-sm font-normal text-white text-center outline-none transition-all duration-300"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border:
+                state === "error"
+                  ? "1px solid rgba(255, 80, 80, 0.5)"
+                  : isLocked
+                  ? "1px solid rgba(232, 114, 159, 0.35)"
+                  : "1px solid rgba(255,255,255,0.08)",
+              letterSpacing: "2px",
+            }}
+          />
+        </motion.div>
+
+        {/* Submit button */}
+        <motion.button
+          onClick={handleSubmit}
+          disabled={state === "unlocking" || isLocked}
+          className="group w-full h-[46px] rounded-[14px] font-body text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-default"
+          style={{
+            background: isLocked ? "rgba(255,255,255,0.08)" : "#fff",
+            color: isLocked ? "rgba(255,255,255,0.25)" : "#0a0515",
+            letterSpacing: "0.5px",
+            border: "none",
+          }}
+          whileHover={
+            state !== "unlocking" && !isLocked
+              ? { y: -1, backgroundColor: "#f0f0f0" }
+              : {}
+          }
+          whileTap={state !== "unlocking" && !isLocked ? { scale: 0.97 } : {}}
+          transition={{ duration: 0.3 }}
+        >
+          <AnimatePresence mode="wait">
+            {state === "unlocking" ? (
+              <motion.span
+                key="check"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                className="flex items-center justify-center"
+              >
+                <Check size={16} strokeWidth={2.5} />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="text"
+                className="flex items-center gap-1.5"
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                {content.lock.button}
+                <ArrowRight
+                  size={14}
+                  strokeWidth={2.5}
+                  className="transition-transform duration-300 group-hover:translate-x-[3px]"
+                />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
 export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
   const [state, setState] = useState<LockState>("idle");
   const [password, setPassword] = useState("");
@@ -100,75 +383,7 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
       style={{ background: "#060309" }}
     >
-      <style>{`
-        @keyframes spinGlow {
-          0% {
-            transform: translate(-50%, -50%) rotate(0deg);
-          }
-          100% {
-            transform: translate(-50%, -50%) rotate(360deg);
-          }
-        }
-        @keyframes spinGlowRev {
-          0% {
-            transform: translate(-50%, -50%) rotate(360deg);
-          }
-          100% {
-            transform: translate(-50%, -50%) rotate(0deg);
-          }
-        }
-      `}</style>
-      {/* Background Grid Image with slow breathing scale & unlock fadeout */}
-      <motion.div
-        className="absolute inset-0 z-[1] pointer-events-none"
-        initial={{ opacity: 0, scale: 1.05 }}
-        animate={{
-          opacity: state === "unlocking" ? 0 : 0.45,
-          scale: state === "unlocking" ? 1.08 : [1.02, 1.06, 1.02]
-        }}
-        transition={{
-          opacity: { duration: 0.8, ease: "easeOut" },
-          scale: {
-            duration: state === "unlocking" ? 1.2 : 25,
-            ease: "easeInOut",
-            repeat: state === "unlocking" ? 0 : Infinity
-          }
-        }}
-        style={{
-          backgroundImage: 'url("/images/bg_grid.jpg")',
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          mixBlendMode: "screen",
-        }}
-      />
-
-      {/* Dark radial vignette to blend grid edges seamlessly into the black background */}
-      <motion.div
-        className="absolute inset-0 z-[1] pointer-events-none"
-        animate={{ opacity: state === "unlocking" ? 0 : 1 }}
-        transition={{ duration: 0.8 }}
-        style={{
-          background:
-            "radial-gradient(circle, transparent 30%, #060309 85%)",
-        }}
-      />
-
-      {/* Noise texture */}
-      <div
-        className="absolute inset-0 pointer-events-none z-[2]"
-        style={{ backgroundImage: NOISE_SVG, opacity: 0.025 }}
-      />
-
-      {/* Ambient glow */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full z-0"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(73, 26, 177, 0.12) 0%, transparent 60%)",
-          filter: "blur(40px)",
-          animation: "ambientBreathe 8s ease-in-out infinite",
-        }}
-      />
+      <LockScreenBackground state={state} />
 
       {/* Premium card wrapper */}
       <div
@@ -257,176 +472,21 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
               }}
             />
 
-        {/* Photo container */}
-        <div
-          className="relative w-full overflow-hidden mb-5"
-          style={{
-            height: "320px",
-            borderRadius: "24px",
-            background: "#0a0515",
-          }}
-        >
-          {/* Photo wrapper — animated by GSAP */}
-          <div
-            ref={photoWrapperRef}
-            className="absolute inset-0"
-            style={{
-              filter: "blur(24px) brightness(0.7) saturate(1.1)",
-              transform: "scale(1.15)",
-            }}
-          >
-            <Image
-              src="/images/samira/P35.jpg"
-              alt="Samira"
-              fill
-              priority
-              sizes="300px"
-              className="object-cover"
-              style={{ objectPosition: "center 25%" }}
+            <LockScreenPhoto photoWrapperRef={photoWrapperRef} glowRef={glowRef} />
+
+            <LockScreenForm
+              state={state}
+              password={password}
+              setPassword={setPassword}
+              handleSubmit={handleSubmit}
+              handleKeyDown={handleKeyDown}
+              lockUntil={lockUntil}
+              timeLeft={timeLeft}
+              inputRef={inputRef}
             />
-          </div>
-
-          {/* Photo bottom gradient overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none z-[2]"
-            style={{
-              background:
-                "linear-gradient(180deg, transparent 60%, rgba(10,5,21,0.4) 100%)",
-              borderRadius: "24px",
-            }}
-          />
-
-          {/* Inner ring shadow */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              borderRadius: "24px",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
-            }}
-          />
-
-          {/* Glow ring — animated by GSAP */}
-          <div
-            ref={glowRef}
-            className="absolute pointer-events-none z-[3]"
-            style={{
-              inset: "-2px",
-              borderRadius: "26px",
-              border: "1px solid transparent",
-            }}
-          />
-        </div>
-
-        {/* Card content */}
-        <div className="w-full px-2">
-          <h1
-            className="font-display text-[26px] font-medium text-white"
-            style={{
-              letterSpacing: "-0.01em",
-              lineHeight: "1.1",
-              marginBottom: "2px",
-            }}
-          >
-            {content.lock.title}
-          </h1>
-          <p
-            className="font-body text-xs font-light"
-            style={{
-              color: lockUntil && Date.now() < lockUntil ? "#E8729F" : "rgba(255,255,255,0.4)",
-              letterSpacing: "0.4px",
-              marginBottom: "22px",
-            }}
-          >
-            {lockUntil && Date.now() < lockUntil
-              ? `Trop d'essais. Patientez ${timeLeft}s`
-              : content.lock.subtitle}
-          </p>
-
-          {/* Input + Button stacked */}
-          <div className="flex flex-col items-center gap-3 w-full">
-            {/* Input with shake on error */}
-            <motion.div
-              className="w-full"
-              animate={
-                state === "error"
-                  ? { x: [0, -8, 8, -4, 4, 0] }
-                  : { x: 0 }
-              }
-              transition={{ duration: 0.5 }}
-            >
-              <input
-                ref={inputRef}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={state === "unlocking" || (lockUntil !== null && Date.now() < lockUntil)}
-                placeholder={lockUntil && Date.now() < lockUntil ? "BLOQUÉ" : "••••••"}
-                autoComplete="off"
-                className="lock-input w-full h-[46px] rounded-[14px] px-4 font-body text-sm font-normal text-white text-center outline-none transition-all duration-300"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border:
-                    state === "error"
-                      ? "1px solid rgba(255, 80, 80, 0.5)"
-                      : lockUntil && Date.now() < lockUntil
-                      ? "1px solid rgba(232, 114, 159, 0.35)"
-                      : "1px solid rgba(255,255,255,0.08)",
-                  letterSpacing: "2px",
-                }}
-              />
-            </motion.div>
-
-            {/* Submit button */}
-            <motion.button
-              onClick={handleSubmit}
-              disabled={state === "unlocking" || (lockUntil !== null && Date.now() < lockUntil)}
-              className="group w-full h-[46px] rounded-[14px] font-body text-[13px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-default"
-              style={{
-                background: lockUntil && Date.now() < lockUntil ? "rgba(255,255,255,0.08)" : "#fff",
-                color: lockUntil && Date.now() < lockUntil ? "rgba(255,255,255,0.25)" : "#0a0515",
-                letterSpacing: "0.5px",
-                border: "none",
-              }}
-              whileHover={
-                state !== "unlocking" && !(lockUntil && Date.now() < lockUntil) ? { y: -1, backgroundColor: "#f0f0f0" } : {}
-              }
-              whileTap={state !== "unlocking" && !(lockUntil && Date.now() < lockUntil) ? { scale: 0.97 } : {}}
-              transition={{ duration: 0.3 }}
-            >
-              <AnimatePresence mode="wait">
-                {state === "unlocking" ? (
-                  <motion.span
-                    key="check"
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="flex items-center justify-center"
-                  >
-                    <Check size={16} strokeWidth={2.5} />
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="text"
-                    className="flex items-center gap-1.5"
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {content.lock.button}
-                    <ArrowRight
-                      size={14}
-                      strokeWidth={2.5}
-                      className="transition-transform duration-300 group-hover:translate-x-[3px]"
-                    />
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
       {/* Unlock sequence overlay */}
       {state === "unlocking" && (

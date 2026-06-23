@@ -36,14 +36,12 @@ const STACK: Record<
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-function Card({
-  src,
+function useCardDragState({
   relIndex,
   isAnimating,
   setIsAnimating,
   onSwipe,
 }: {
-  src: string;
   relIndex: number;
   isAnimating: boolean;
   setIsAnimating: (v: boolean) => void;
@@ -109,36 +107,75 @@ function Card({
     [isAnimating, relIndex, x, cardRotate, cardOpacity, onSwipe, setIsAnimating]
   );
 
+  return { x, cardRotate, cardOpacity, flyingRef, handleDragEnd };
+}
+
+function Card({
+  src,
+  relIndex,
+  isAnimating,
+  setIsAnimating,
+  onSwipe,
+}: {
+  src: string;
+  relIndex: number;
+  isAnimating: boolean;
+  setIsAnimating: (v: boolean) => void;
+  onSwipe: () => void;
+}) {
+  const { x, cardRotate, cardOpacity, flyingRef, handleDragEnd } = useCardDragState({
+    relIndex,
+    isAnimating,
+    setIsAnimating,
+    onSwipe,
+  });
+
   const pos = STACK[relIndex];
   const isTop = relIndex === 0 || flyingRef.current;
 
+  // Pre-calculate styling values to decrease cyclomatic complexity in JSX
+  const dragType = relIndex === 0 && !isAnimating ? "x" : false;
+  const animScale = flyingRef.current ? 1 : pos.scale;
+  const animY = flyingRef.current ? 0 : pos.y;
+  
+  const cardZIndex = flyingRef.current ? 10 : pos.zIndex;
+  const cursorStyle = relIndex === 0 && !isAnimating ? "grab" : "default";
+  
+  const shadowStyle = isTop
+    ? "0 20px 60px rgba(10,5,21,0.7), 0 8px 24px rgba(52,17,126,0.2)"
+    : "0 12px 40px rgba(10,5,21,0.5), 0 4px 16px rgba(52,17,126,0.12)";
+    
+  const borderStyle = isTop
+    ? "1px solid rgba(123,69,240,0.15)"
+    : "1px solid rgba(123,69,240,0.08)";
+    
+  const bgOverlay = isTop
+    ? "linear-gradient(180deg, transparent 50%, rgba(10,5,21,0.35) 100%)"
+    : `linear-gradient(180deg, rgba(10,5,21,${0.1 + relIndex * 0.12}) 0%, rgba(10,5,21,${0.25 + relIndex * 0.12}) 100%)`;
+
   return (
     <motion.div
-      drag={relIndex === 0 && !isAnimating ? "x" : false}
+      drag={dragType}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: "grabbing", scale: 1.02 }}
       animate={{
-        scale: flyingRef.current ? 1 : pos.scale,
-        y: flyingRef.current ? 0 : pos.y,
+        scale: animScale,
+        y: animY,
       }}
       transition={{ duration: 0.4, ease }}
       className="absolute top-0 left-0 w-full h-[400px] lg:h-[480px]"
       style={{
-        zIndex: flyingRef.current ? 10 : pos.zIndex,
+        zIndex: cardZIndex,
         x,
         rotate: cardRotate,
         opacity: cardOpacity,
-        cursor: relIndex === 0 && !isAnimating ? "grab" : "default",
+        cursor: cursorStyle,
         borderRadius: "20px",
         overflow: "hidden",
-        boxShadow: isTop
-          ? "0 20px 60px rgba(10,5,21,0.7), 0 8px 24px rgba(52,17,126,0.2)"
-          : "0 12px 40px rgba(10,5,21,0.5), 0 4px 16px rgba(52,17,126,0.12)",
-        border: isTop
-          ? "1px solid rgba(123,69,240,0.15)"
-          : "1px solid rgba(123,69,240,0.08)",
+        boxShadow: shadowStyle,
+        border: borderStyle,
         touchAction: "pan-y",
         transformOrigin: "center bottom",
         willChange: "transform, opacity",
@@ -156,9 +193,7 @@ function Card({
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: isTop
-            ? "linear-gradient(180deg, transparent 50%, rgba(10,5,21,0.35) 100%)"
-            : `linear-gradient(180deg, rgba(10,5,21,${0.1 + relIndex * 0.12}) 0%, rgba(10,5,21,${0.25 + relIndex * 0.12}) 100%)`,
+          background: bgOverlay,
         }}
       />
     </motion.div>

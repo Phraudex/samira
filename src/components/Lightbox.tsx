@@ -15,6 +15,111 @@ interface LightboxProps {
   zIndex?: number;
 }
 
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      onClick={onClose}
+      aria-label="Fermer"
+      style={{
+        position: "absolute",
+        top: "calc(20px + env(safe-area-inset-top, 0px))",
+        right: "20px",
+        zIndex: 20,
+        width: "44px",
+        height: "44px",
+        borderRadius: "12px",
+        background: "rgba(255,255,255,0.1)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "white",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <X size={20} strokeWidth={1.5} />
+    </button>
+  );
+}
+
+function ImageCounter({ current, total }: { current: number; total: number }) {
+  if (total <= 1) return null;
+  return (
+    <p
+      style={{
+        position: "absolute",
+        top: "calc(32px + env(safe-area-inset-top, 0px))",
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontSize: "11px",
+        letterSpacing: "1.5px",
+        color: "rgba(255,255,255,0.35)",
+        fontFamily: "var(--font-body)",
+        zIndex: 20,
+        pointerEvents: "none",
+      }}
+    >
+      {current + 1} / {total}
+    </p>
+  );
+}
+
+interface DesktopArrowsProps {
+  goPrev: () => void;
+  goNext: () => void;
+  total: number;
+}
+
+function DesktopArrows({ goPrev, goNext, total }: DesktopArrowsProps) {
+  if (total <= 1) return null;
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); goPrev(); }}
+        aria-label="Photo précédente"
+        className="hidden lg:flex items-center justify-center"
+        style={{
+          position: "absolute",
+          left: "24px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: "44px",
+          height: "44px",
+          borderRadius: "12px",
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "rgba(255,255,255,0.7)",
+          cursor: "pointer",
+          zIndex: 20,
+        }}
+      >
+        <ChevronLeft size={20} strokeWidth={1.5} />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); goNext(); }}
+        aria-label="Photo suivante"
+        className="hidden lg:flex items-center justify-center"
+        style={{
+          position: "absolute",
+          right: "24px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: "44px",
+          height: "44px",
+          borderRadius: "12px",
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "rgba(255,255,255,0.7)",
+          cursor: "pointer",
+          zIndex: 20,
+        }}
+      >
+        <ChevronRight size={20} strokeWidth={1.5} />
+      </button>
+    </>
+  );
+}
+
 export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex = 50 }: LightboxProps) {
   const [current, setCurrent] = useState(initialIndex);
   const [mounted, setMounted] = useState(false);
@@ -80,10 +185,6 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
   const prevIdx = (current - 1 + n) % n;
   const nextIdx = (current + 1) % n;
 
-  // 3 persistent slots keyed by role — images never unmount on swipe
-  // Math: slot visual position = CSS offset (vw) + motionValue x
-  // After animation: x goes ±vw, then resets to 0 while current updates
-  // The image that was ±100vw becomes 0 in both states → zero flash
   const slots =
     n === 1
       ? [{ key: "center" as const, src: images[0], offsetVw: 0, isPriority: true }]
@@ -105,51 +206,10 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
           style={{ zIndex, background: "rgba(0,0,0,0.96)" }}
           onClick={onClose}
         >
-          {/* Close */}
-          <button
-            onClick={onClose}
-            aria-label="Fermer"
-            style={{
-              position: "absolute",
-              top: "calc(20px + env(safe-area-inset-top, 0px))",
-              right: "20px",
-              zIndex: 20,
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              background: "rgba(255,255,255,0.1)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "white",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <X size={20} strokeWidth={1.5} />
-          </button>
+          <CloseButton onClose={onClose} />
 
-          {/* Counter */}
-          {n > 1 && (
-            <p
-              style={{
-                position: "absolute",
-                top: "calc(32px + env(safe-area-inset-top, 0px))",
-                left: "50%",
-                transform: "translateX(-50%)",
-                fontSize: "11px",
-                letterSpacing: "1.5px",
-                color: "rgba(255,255,255,0.35)",
-                fontFamily: "var(--font-body)",
-                zIndex: 20,
-                pointerEvents: "none",
-              }}
-            >
-              {current + 1} / {n}
-            </p>
-          )}
+          <ImageCounter current={current} total={n} />
 
-          {/* Draggable strip — 3 persistent slots, no mount/unmount on swipe */}
           <motion.div
             drag={n > 1 ? "x" : false}
             dragConstraints={{ left: 0, right: 0 }}
@@ -190,60 +250,13 @@ export default function Lightbox({ images, isOpen, initialIndex, onClose, zIndex
                     className="object-contain"
                     draggable={false}
                     priority={slot.isPriority}
-                    loading={slot.isPriority ? "eager" : "eager"}
                   />
                 </div>
               </div>
             ))}
           </motion.div>
 
-          {/* Desktop arrows */}
-          {n > 1 && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); goPrev(); }}
-                aria-label="Photo précédente"
-                className="hidden lg:flex items-center justify-center"
-                style={{
-                  position: "absolute",
-                  left: "24px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "rgba(255,255,255,0.7)",
-                  cursor: "pointer",
-                  zIndex: 20,
-                }}
-              >
-                <ChevronLeft size={20} strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); goNext(); }}
-                aria-label="Photo suivante"
-                className="hidden lg:flex items-center justify-center"
-                style={{
-                  position: "absolute",
-                  right: "24px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "rgba(255,255,255,0.7)",
-                  cursor: "pointer",
-                  zIndex: 20,
-                }}
-              >
-                <ChevronRight size={20} strokeWidth={1.5} />
-              </button>
-            </>
-          )}
+          <DesktopArrows goPrev={goPrev} goNext={goNext} total={n} />
         </motion.div>
       )}
     </AnimatePresence>,
