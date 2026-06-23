@@ -538,6 +538,7 @@ function VideoPlayerRenderPortal({
                 key={src}
                 playsInline
                 preload="auto"
+                autoPlay
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}

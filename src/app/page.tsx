@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LockScreen from "@/components/LockScreen";
 import Hero from "@/components/Hero";
 import ChapterNav from "@/components/ChapterNav";
@@ -35,6 +35,19 @@ function ChapterSeparator() {
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("locked");
   const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    const preventCopy = (e: ClipboardEvent) => e.preventDefault();
+    const preventContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    document.addEventListener("copy", preventCopy);
+    document.addEventListener("contextmenu", preventContextMenu);
+
+    return () => {
+      document.removeEventListener("copy", preventCopy);
+      document.removeEventListener("contextmenu", preventContextMenu);
+    };
+  }, []);
 
   return (
     <main>

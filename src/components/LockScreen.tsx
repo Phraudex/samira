@@ -9,7 +9,7 @@ import UnlockSequence from "./UnlockSequence";
 
 const NOISE_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
-type LockState = "idle" | "error" | "unlocking";
+type LockState = "splash" | "idle" | "error" | "unlocking";
 
 interface LockScreenProps {
   onUnlockComplete: () => void;
@@ -298,8 +298,30 @@ function LockScreenForm({
   );
 }
 
+const titleContainerVariants = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: 0.12,
+    }
+  }
+};
+
+const titleLetterVariants = {
+  initial: { opacity: 0, y: 15, filter: "blur(6px)" },
+  animate: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.8,
+      ease: [0.16, 1, 0.3, 1]
+    }
+  }
+};
+
 export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
-  const [state, setState] = useState<LockState>("idle");
+  const [state, setState] = useState<LockState>("splash");
   const [password, setPassword] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
@@ -309,6 +331,16 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
   const photoWrapperRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Transition from splash to idle after 1.8s
+  useEffect(() => {
+    if (state === "splash") {
+      const timer = setTimeout(() => {
+        setState("idle");
+      }, 1800);
+      return () => clearTimeout(timer);
+    }
+  }, [state]);
 
   // Check stored lock on mount
   useEffect(() => {
@@ -342,7 +374,7 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
   }, [lockUntil]);
 
   const handleSubmit = useCallback(async () => {
-    if (state === "unlocking") return;
+    if (state === "unlocking" || state === "splash") return;
     if (lockUntil && Date.now() < lockUntil) return;
 
     const trimmed = password.trim().toLowerCase();
@@ -378,115 +410,184 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
     if (e.key === "Enter") handleSubmit();
   };
 
+  const nameLetters = Array.from("SAMIRA");
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
       style={{ background: "#060309" }}
     >
-      <LockScreenBackground state={state} />
-
-      {/* Premium card wrapper */}
-      <div
-        ref={cardRef}
-        className="relative z-[3] w-[300px]"
-        style={{
-          borderRadius: "32px",
-          transformOrigin: "center center",
-        }}
-      >
-        {/* Soft diffused liquid outer glow - counter-rotates and has soft liquid gradient */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: "580px",
-            height: "580px",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%) rotate(0deg)",
-            borderRadius: "50%",
-            background:
-              "conic-gradient(from 0deg, transparent 20%, rgba(114, 230, 255, 0.12) 40%, rgba(169, 129, 255, 0.22) 55%, rgba(244, 166, 198, 0.12) 70%, transparent 85%)",
-            filter: "blur(35px)",
-            opacity: 0.24,
-            animation: "spinGlowRev 12s linear infinite",
-            transformOrigin: "center center",
-          }}
-        />
-
-        {/* Overflow-hidden border mask container */}
-        <div
-          className="relative w-full overflow-hidden"
-          style={{
-            borderRadius: "32px",
-            padding: "1.5px",
-            background: "rgba(123, 69, 240, 0.08)",
-            boxShadow:
-              "0 24px 60px rgba(0,0,0,0.65), 0 8px 24px rgba(52,17,126,0.12)",
-          }}
-        >
-          {/* Sharp rotating border light ray (Liquid Glass Effect) */}
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              width: "580px",
-              height: "580px",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%) rotate(0deg)",
-              background:
-                "conic-gradient(from 0deg, transparent 40%, #72E6FF 48%, #FFFFFF 50%, #A981FF 52%, #F4A6C6 60%, transparent 70%)",
-              animation: "spinGlow 7s linear infinite",
-              transformOrigin: "center center",
-            }}
-          />
-
-          {/* Card inner glassmorphic body */}
-          <div
-            className="relative w-full flex flex-col items-center overflow-hidden z-[1]"
-            style={{
-              background:
-                "linear-gradient(160deg, rgba(28, 18, 50, 0.88), rgba(18, 10, 35, 0.96))",
-              backdropFilter: "blur(40px) saturate(180%)",
-              WebkitBackdropFilter: "blur(40px) saturate(180%)",
-              borderRadius: "31px",
-              padding: "16px 16px 28px",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
-            }}
+      <AnimatePresence mode="wait">
+        {state === "splash" ? (
+          <motion.div
+            key="splash"
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#060309]"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
           >
-            {/* Glass reflection sheen */}
+            {/* Violet ambient glow */}
             <div
-              className="absolute inset-0 pointer-events-none z-[2]"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
               style={{
                 background:
-                  "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 40%, transparent 100%)",
-                borderRadius: "31px",
+                  "radial-gradient(circle, rgba(123, 69, 240, 0.12) 0%, transparent 70%)",
+                filter: "blur(50px)",
               }}
             />
+            {/* Typography Title */}
+            <div className="flex flex-col items-center gap-3">
+              <motion.h1
+                variants={titleContainerVariants}
+                initial="initial"
+                animate="animate"
+                exit={{ opacity: 0, scale: 1.08, filter: "blur(6px)", transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }}
+                className="font-display text-[clamp(36px,9vw,56px)] font-light text-white tracking-[0.3em] pl-[0.3em]"
+              >
+                {nameLetters.map((char, i) => (
+                  <motion.span
+                    key={i}
+                    variants={titleLetterVariants}
+                    className="inline-block"
+                  >
+                    {char}
+                  </motion.span>
+                ))}
+              </motion.h1>
 
-            {/* Top highlight line */}
-            <div
-              className="absolute top-0 left-[30%] right-[30%] h-px z-[3]"
+              <motion.p
+                initial={{ opacity: 0, letterSpacing: "4px" }}
+                animate={{ opacity: 0.4, letterSpacing: "8px" }}
+                transition={{ delay: 0.8, duration: 1.2, ease: "easeOut" }}
+                exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                className="font-body text-[10px] font-semibold text-white uppercase tracking-[8px] pl-[8px]"
+              >
+                Le Livre
+              </motion.p>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            <LockScreenBackground state={state} />
+
+            {/* Premium card wrapper */}
+            <motion.div
+              ref={cardRef}
+              className="relative z-[3] w-[300px]"
+              initial={{ opacity: 0, scale: 0.94, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{
+                duration: 0.8,
+                ease: [0.16, 1, 0.3, 1],
+                delay: 0.1,
+              }}
               style={{
-                background:
-                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+                borderRadius: "32px",
+                transformOrigin: "center center",
               }}
-            />
+            >
+              {/* Soft diffused liquid outer glow - counter-rotates and has soft liquid gradient */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  width: "580px",
+                  height: "580px",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%) rotate(0deg)",
+                  borderRadius: "50%",
+                  background:
+                    "conic-gradient(from 0deg, transparent 20%, rgba(114, 230, 255, 0.12) 40%, rgba(169, 129, 255, 0.22) 55%, rgba(244, 166, 198, 0.12) 70%, transparent 85%)",
+                  filter: "blur(35px)",
+                  opacity: 0.24,
+                  animation: "spinGlowRev 12s linear infinite",
+                  transformOrigin: "center center",
+                }}
+              />
 
-            <LockScreenPhoto photoWrapperRef={photoWrapperRef} glowRef={glowRef} />
+              {/* Overflow-hidden border mask container */}
+              <div
+                className="relative w-full overflow-hidden"
+                style={{
+                  borderRadius: "32px",
+                  padding: "1.5px",
+                  background: "rgba(123, 69, 240, 0.08)",
+                  boxShadow:
+                    "0 24px 60px rgba(0,0,0,0.65), 0 8px 24px rgba(52,17,126,0.12)",
+                }}
+              >
+                {/* Sharp rotating border light ray (Liquid Glass Effect) */}
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    width: "580px",
+                    height: "580px",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%) rotate(0deg)",
+                    background:
+                      "conic-gradient(from 0deg, transparent 40%, #72E6FF 48%, #FFFFFF 50%, #A981FF 52%, #F4A6C6 60%, transparent 70%)",
+                    animation: "spinGlow 7s linear infinite",
+                    transformOrigin: "center center",
+                  }}
+                />
 
-            <LockScreenForm
-              state={state}
-              password={password}
-              setPassword={setPassword}
-              handleSubmit={handleSubmit}
-              handleKeyDown={handleKeyDown}
-              lockUntil={lockUntil}
-              timeLeft={timeLeft}
-              inputRef={inputRef}
-            />
-          </div>
-        </div>
-      </div>
+                {/* Card inner glassmorphic body */}
+                <div
+                  className="relative w-full flex flex-col items-center overflow-hidden z-[1]"
+                  style={{
+                    background:
+                      "linear-gradient(160deg, rgba(28, 18, 50, 0.88), rgba(18, 10, 35, 0.96))",
+                    backdropFilter: "blur(40px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(40px) saturate(180%)",
+                    borderRadius: "31px",
+                    padding: "16px 16px 28px",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {/* Glass reflection sheen */}
+                  <div
+                    className="absolute inset-0 pointer-events-none z-[2]"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 40%, transparent 100%)",
+                      borderRadius: "31px",
+                    }}
+                  />
+
+                  {/* Top highlight line */}
+                  <div
+                    className="absolute top-0 left-[30%] right-[30%] h-px z-[3]"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+                    }}
+                  />
+
+                  <LockScreenPhoto photoWrapperRef={photoWrapperRef} glowRef={glowRef} />
+
+                  <LockScreenForm
+                    state={state}
+                    password={password}
+                    setPassword={setPassword}
+                    handleSubmit={handleSubmit}
+                    handleKeyDown={handleKeyDown}
+                    lockUntil={lockUntil}
+                    timeLeft={timeLeft}
+                    inputRef={inputRef}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Unlock sequence overlay */}
       {state === "unlocking" && (

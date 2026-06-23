@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import Image from "next/image";
@@ -10,21 +10,39 @@ import type { BibliothequeItem } from "@/data/content";
 import Lightbox from "./Lightbox";
 import VideoPlayer from "./VideoPlayer";
 
-function LazyVideoThumbnail({ src, index }: { src: string; index: number }) {
+function LazyVideoThumbnail({ src, isSuspended }: { src: string; isSuspended: boolean }) {
   const [shouldLoad, setShouldLoad] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Stagger loading based on index (150ms delay per video) to prevent mobile connection spikes
-    const delay = Math.min(index * 150, 1200);
-    const timer = setTimeout(() => {
-      setShouldLoad(true);
-    }, delay);
+    if (isSuspended) {
+      setShouldLoad(false);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [src, index]);
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          const timer = setTimeout(() => {
+            setShouldLoad(true);
+          }, 100);
+          observer.unobserve(el);
+          return () => clearTimeout(timer);
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [src, isSuspended]);
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "absolute",
         inset: 0,
@@ -33,7 +51,7 @@ function LazyVideoThumbnail({ src, index }: { src: string; index: number }) {
         background: "linear-gradient(135deg, rgba(52,17,126,0.4), rgba(6,3,9,0.8))",
       }}
     >
-      {shouldLoad ? (
+      {shouldLoad && !isSuspended ? (
         <video
           src={`${src}#t=0.5`}
           preload="metadata"
@@ -51,7 +69,7 @@ function LazyVideoThumbnail({ src, index }: { src: string; index: number }) {
         />
       ) : (
         <div
-          className="absolute inset-0 animate-pulse"
+          className="absolute inset-0"
           style={{
             background: "linear-gradient(135deg, rgba(52,17,126,0.3), rgba(73,26,177,0.15))",
           }}
@@ -197,9 +215,10 @@ function MediaGridPhotos({ photos, onPhotoClick }: MediaGridPhotosProps) {
 interface MediaGridVideosProps {
   videos: string[];
   onVideoClick: (src: string) => void;
+  isSuspended: boolean;
 }
 
-function MediaGridVideos({ videos, onVideoClick }: MediaGridVideosProps) {
+function MediaGridVideos({ videos, onVideoClick, isSuspended }: MediaGridVideosProps) {
   if (videos.length === 0) return null;
   return (
     <div>
@@ -239,7 +258,7 @@ function MediaGridVideos({ videos, onVideoClick }: MediaGridVideosProps) {
                 position: "relative",
               }}
             >
-              <LazyVideoThumbnail src={videoSrc} index={i} />
+              <LazyVideoThumbnail src={videoSrc} isSuspended={isSuspended} />
               
               <div
                 style={{
@@ -398,6 +417,7 @@ export default function SouvenirModal({ item, isOpen, onClose }: SouvenirModalPr
                     <MediaGridVideos
                       videos={localItem.videos}
                       onVideoClick={(vSrc) => setActiveVideo(vSrc)}
+                      isSuspended={activeVideo !== null}
                     />
                   </>
                 ) : (

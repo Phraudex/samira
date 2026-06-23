@@ -74,6 +74,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <link rel="preload" href="/images/bg_grid.jpg" as="image" />
+        <link rel="preload" href="/images/samira/P35.jpg" as="image" />
       </head>
       <body className="font-body antialiased overflow-x-hidden" style={{ backgroundColor: "#060309" }}>
         {children}
