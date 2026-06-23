@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause } from "lucide-react";
 import { easings } from "@/lib/animations";
+import { posterFor } from "@/lib/media";
 
 /* ------------------------------------------------------------------ */
 /* Module-level helpers & sub-components                               */
@@ -495,6 +496,7 @@ export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: Video
               <video
                 ref={videoRef}
                 key={src}
+                poster={posterFor(src)}
                 playsInline
                 preload="auto"
                 autoPlay

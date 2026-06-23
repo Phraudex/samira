@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { fadeUp, easings } from "@/lib/animations";
+import { posterFor } from "@/lib/media";
 import type { BibliothequeItem } from "@/data/content";
 
 interface SouvenirCardProps {
@@ -79,28 +80,38 @@ export default function SouvenirCard({
             sizes="(max-width:1024px) 50vw, 33vw"
           />
         ) : hasVideos ? (
-          <div className="absolute inset-0 flex items-center justify-center z-[2]">
-            <div
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "50%",
-                background: "rgba(123, 69, 240, 0.8)",
-                border: "1px solid rgba(123, 69, 240, 0.9)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 0 16px rgba(123,69,240,0.4)",
-              }}
-            >
-              <Play
-                size={18}
-                strokeWidth={1.5}
-                fill="white"
-                style={{ color: "white", marginLeft: "2px" }}
-              />
+          <>
+            {/* Real video poster frame as the cover */}
+            <Image
+              src={posterFor(item.videos[0])}
+              alt={item.titre}
+              fill
+              className="object-cover"
+              sizes="(max-width:1024px) 50vw, 33vw"
+            />
+            <div className="absolute inset-0 flex items-center justify-center z-[2]">
+              <div
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  background: "rgba(123, 69, 240, 0.8)",
+                  border: "1px solid rgba(123, 69, 240, 0.9)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 0 16px rgba(123,69,240,0.4)",
+                }}
+              >
+                <Play
+                  size={18}
+                  strokeWidth={1.5}
+                  fill="white"
+                  style={{ color: "white", marginLeft: "2px" }}
+                />
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           // Video-only series fallback (if neither photos nor videos)
           <div className="absolute inset-0 flex items-center justify-center">

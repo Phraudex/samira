@@ -6,21 +6,31 @@ import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import Image from "next/image";
 import { ArrowLeft, Play } from "lucide-react";
 import { easings } from "@/lib/animations";
+import { posterFor } from "@/lib/media";
 import type { BibliothequeItem } from "@/data/content";
 import Lightbox from "./Lightbox";
 import VideoPlayer from "./VideoPlayer";
 
-function VideoThumbnailPlaceholder() {
+function VideoThumbnail({ videoSrc }: { videoSrc: string }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        background: "linear-gradient(135deg, rgba(52,17,126,0.35) 0%, rgba(20,8,60,0.6) 50%, rgba(6,3,9,0.85) 100%)",
-      }}
-    />
+    <>
+      <Image
+        src={posterFor(videoSrc)}
+        alt="Aperçu vidéo"
+        fill
+        sizes="45vw"
+        className="object-cover"
+        style={{ pointerEvents: "none" }}
+      />
+      {/* Darkening veil for play button / index legibility */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(6,3,9,0.15) 0%, rgba(6,3,9,0.1) 45%, rgba(6,3,9,0.55) 100%)",
+        }}
+      />
+    </>
   );
 }
 
@@ -202,7 +212,7 @@ function MediaGridVideos({ videos, onVideoClick }: MediaGridVideosProps) {
                 position: "relative",
               }}
             >
-              <VideoThumbnailPlaceholder />
+              <VideoThumbnail videoSrc={videoSrc} />
               
               <div
                 style={{
