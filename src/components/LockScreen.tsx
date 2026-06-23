@@ -86,8 +86,7 @@ function LockScreenBackground({ state }: LockScreenBackgroundProps) {
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full z-0"
         style={{
           background:
-            "radial-gradient(circle, rgba(73, 26, 177, 0.12) 0%, transparent 60%)",
-          filter: "blur(40px)",
+            "radial-gradient(circle, rgba(73, 26, 177, 0.08) 0%, rgba(73, 26, 177, 0.02) 40%, transparent 70%)",
           animation: "ambientBreathe 8s ease-in-out infinite",
         }}
       />
@@ -308,11 +307,10 @@ const titleContainerVariants = {
 };
 
 const titleLetterVariants = {
-  initial: { opacity: 0, y: 15, filter: "blur(6px)" },
+  initial: { opacity: 0, y: 15 },
   animate: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: {
       duration: 0.8,
       ease: [0.16, 1, 0.3, 1]
@@ -431,8 +429,7 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(123, 69, 240, 0.12) 0%, transparent 70%)",
-                filter: "blur(50px)",
+                  "radial-gradient(circle, rgba(123, 69, 240, 0.08) 0%, rgba(123, 69, 240, 0.02) 45%, transparent 70%)",
               }}
             />
             {/* Typography Title */}
@@ -440,7 +437,7 @@ export default function LockScreen({ onUnlockComplete }: LockScreenProps) {
               variants={titleContainerVariants}
               initial="initial"
               animate="animate"
-              exit={{ opacity: 0, scale: 1.08, filter: "blur(6px)", transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }}
+              exit={{ opacity: 0, scale: 1.08, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }}
               className="font-display text-[clamp(36px,9vw,56px)] font-light text-white tracking-[0.3em] pl-[0.3em]"
             >
               {nameLetters.map((char, i) => (
