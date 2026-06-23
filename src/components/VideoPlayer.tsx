@@ -6,216 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause } from "lucide-react";
 import { easings } from "@/lib/animations";
 
-interface VideoPlayerProps {
-  src: string;
-  isOpen: boolean;
-  onClose: () => void;
-  zIndex?: number;
-}
-
-export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const fillRef = useRef<HTMLDivElement>(null);
-  const handleRef = useRef<HTMLDivElement>(null);
-  const timeTextRef = useRef<HTMLParagraphElement>(null);
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [mounted, setMounted] = useState(false);
-  const [videoError, setVideoError] = useState<string | null>(null);
-  const [isBuffering, setIsBuffering] = useState(false);
-
-  const isScrubbing = useRef(false);
-  const wasPlaying = useRef(false);
-  const pendingSeekTime = useRef<number | null>(null);
-  const seekTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Autoplay video on open (user-initiated click context)
-  useEffect(() => {
-    if (isOpen && videoRef.current) {
-      const timer = setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.play().catch((err) => {
-            console.log("Autoplay blocked or interrupted:", err);
-          });
-        }
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, src]);
-
-  // Clean up timers on unmount
-  useEffect(() => {
-    const timeout = seekTimeout.current;
-    const raf = rafRef.current;
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  useEffect(() => {
-    setVideoError(null);
-    setIsBuffering(false);
-    setProgress(0);
-    if (videoRef.current) {
-      videoRef.current.load();
-    }
-  }, [src]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === " ") { e.preventDefault(); togglePlay(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [isOpen, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const togglePlay = useCallback(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (v.paused) {
-      v.play().catch(() => {});
-    } else {
-      v.pause();
-    }
-  }, []);
-
-  const performSeek = useCallback((v: HTMLVideoElement, time: number) => {
-    try {
-      if (typeof v.fastSeek === "function") {
-        v.fastSeek(time);
-      } else {
-        v.currentTime = time;
-      }
-    } catch {
-      v.currentTime = time;
-    }
-  }, []);
-
-  const handleSeeked = useCallback(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    setIsBuffering(false);
-
-    if (pendingSeekTime.current !== null) {
-      const timeToSeek = pendingSeekTime.current;
-      pendingSeekTime.current = null;
-      performSeek(v, timeToSeek);
-    }
-  }, [performSeek]);
-
-  const handleTimeUpdate = useCallback(() => {
-    if (isScrubbing.current) return;
-    const v = videoRef.current;
-    if (!v || !v.duration) return;
-    setProgress(v.currentTime / v.duration);
-  }, []);
-
-  const handleLoadedMetadata = useCallback(() => {
-    const v = videoRef.current;
-    if (v) setDuration(v.duration);
-  }, []);
-
-  const handleEnded = useCallback(() => setIsPlaying(false), []);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const v = videoRef.current;
-    if (!v || !v.duration) return;
-    const bar = e.currentTarget;
-    bar.setPointerCapture(e.pointerId);
-    isScrubbing.current = true;
-
-    // Pause playback during scrubbing to prioritize decoding resources
-    if (!v.paused) {
-      wasPlaying.current = true;
-      v.pause();
-    } else {
-      wasPlaying.current = false;
-    }
-
-    const updateScrub = (clientX: number, isFinal = false) => {
-      const rect = bar.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      const targetTime = ratio * v.duration;
-
-      // 1. Direct DOM updates (bypasses React render pipeline for absolute 120fps/60fps scrubbing)
-      if (fillRef.current) {
-        fillRef.current.style.transition = "none";
-        fillRef.current.style.width = `${ratio * 100}%`;
-      }
-      if (handleRef.current) {
-        handleRef.current.style.left = `${ratio * 100}%`;
-      }
-      if (timeTextRef.current) {
-        timeTextRef.current.textContent = `${formatTime(targetTime)} / ${formatTime(v.duration)}`;
-      }
-
-      // 2. Queue seek to avoid pipeline flooding
-      pendingSeekTime.current = targetTime;
-
-      if (isFinal) {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        if (seekTimeout.current) clearTimeout(seekTimeout.current);
-        pendingSeekTime.current = null;
-        
-        // Final precise frame seek on release
-        v.currentTime = targetTime;
-        setProgress(ratio);
-      } else {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        rafRef.current = requestAnimationFrame(() => {
-          if (!v.seeking && pendingSeekTime.current !== null) {
-            const timeToSeek = pendingSeekTime.current;
-            pendingSeekTime.current = null;
-            performSeek(v, timeToSeek);
-          }
-        });
-      }
-    };
-
-    updateScrub(e.clientX);
-
-    const onMove = (ev: PointerEvent) => {
-      if (!isScrubbing.current) return;
-      updateScrub(ev.clientX);
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      if (!isScrubbing.current) return;
-      isScrubbing.current = false;
-
-      updateScrub(ev.clientX, true);
-
-      // Restore CSS transition for smooth normal playback
-      if (fillRef.current) {
-        fillRef.current.style.transition = "width 0.05s linear";
-      }
-
-      if (wasPlaying.current) {
-        v.play().catch(() => {});
-      }
-
-      bar.removeEventListener("pointermove", onMove);
-      bar.removeEventListener("pointerup", onUp);
-      bar.removeEventListener("pointercancel", onUp);
-    };
-
-    bar.addEventListener("pointermove", onMove);
-    bar.addEventListener("pointerup", onUp);
-    bar.addEventListener("pointercancel", onUp);
-  }, [performSeek]);
+/* ------------------------------------------------------------------ */
+/* Module-level helpers & sub-components                               */
+/* (MUST live outside the main component — defining them inside would  */
+/*  give them a new identity on every render, forcing React to unmount */
+/*  and remount the <video> element repeatedly → audio blips, no       */
+/*  playback, page trembling.)                                         */
+/* ------------------------------------------------------------------ */
 
 function formatTime(time: number) {
   if (isNaN(time)) return "00:00";
@@ -224,15 +21,10 @@ function formatTime(time: number) {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-interface ErrorDisplayProps {
-  videoError: string | null;
-  onRetry: () => void;
-}
-
-function ErrorDisplay({ videoError, onRetry }: ErrorDisplayProps) {
+function ErrorDisplay({ videoError, onRetry }: { videoError: string | null; onRetry: () => void }) {
   if (!videoError) return null;
   return (
-    <div 
+    <div
       className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 px-6 text-center z-10"
       onClick={(e) => e.stopPropagation()}
     >
@@ -250,12 +42,7 @@ function ErrorDisplay({ videoError, onRetry }: ErrorDisplayProps) {
   );
 }
 
-interface BufferingSpinnerProps {
-  isBuffering: boolean;
-  videoError: string | null;
-}
-
-function BufferingSpinner({ isBuffering, videoError }: BufferingSpinnerProps) {
+function BufferingSpinner({ isBuffering, videoError }: { isBuffering: boolean; videoError: string | null }) {
   return (
     <AnimatePresence>
       {isBuffering && !videoError && (
@@ -283,14 +70,17 @@ function BufferingSpinner({ isBuffering, videoError }: BufferingSpinnerProps) {
   );
 }
 
-interface PlayOverlayProps {
+function PlayOverlay({
+  isPlaying,
+  isScrubbing,
+  videoError,
+  togglePlay,
+}: {
   isPlaying: boolean;
   isScrubbing: boolean;
   videoError: string | null;
   togglePlay: () => void;
-}
-
-function PlayOverlay({ isPlaying, isScrubbing, videoError, togglePlay }: PlayOverlayProps) {
+}) {
   return (
     <AnimatePresence>
       {!isPlaying && !isScrubbing && !videoError && (
@@ -323,14 +113,17 @@ function PlayOverlay({ isPlaying, isScrubbing, videoError, togglePlay }: PlayOve
   );
 }
 
-interface ProgressSliderProps {
+function ProgressSlider({
+  progress,
+  fillRef,
+  handleRef,
+  onPointerDown,
+}: {
   progress: number;
   fillRef: React.RefObject<HTMLDivElement | null>;
   handleRef: React.RefObject<HTMLDivElement | null>;
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
-}
-
-function ProgressSlider({ progress, fillRef, handleRef, onPointerDown }: ProgressSliderProps) {
+}) {
   return (
     <div
       role="slider"
@@ -389,18 +182,22 @@ function ProgressSlider({ progress, fillRef, handleRef, onPointerDown }: Progres
   );
 }
 
-interface ControlsRowProps {
+function ControlsRow({
+  progress,
+  duration,
+  isPlaying,
+  togglePlay,
+  timeTextRef,
+}: {
   progress: number;
   duration: number;
   isPlaying: boolean;
   togglePlay: () => void;
   timeTextRef: React.RefObject<HTMLParagraphElement | null>;
-}
-
-function ControlsRow({ progress, duration, isPlaying, togglePlay, timeTextRef }: ControlsRowProps) {
+}) {
   return (
     <div className="flex items-center justify-between">
-      <p 
+      <p
         ref={timeTextRef}
         style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-body)", letterSpacing: "0.5px" }}
       >
@@ -422,66 +219,222 @@ function ControlsRow({ progress, duration, isPlaying, togglePlay, timeTextRef }:
           justifyContent: "center",
         }}
       >
-        {isPlaying
-          ? <Pause size={18} strokeWidth={1.5} />
-          : <Play size={18} strokeWidth={1.5} style={{ marginLeft: "2px" }} />
-        }
+        {isPlaying ? <Pause size={18} strokeWidth={1.5} /> : <Play size={18} strokeWidth={1.5} style={{ marginLeft: "2px" }} />}
       </button>
     </div>
   );
 }
 
-interface VideoPlayerRenderPortalProps {
+/* ------------------------------------------------------------------ */
+/* Main component                                                     */
+/* ------------------------------------------------------------------ */
+
+interface VideoPlayerProps {
   src: string;
   isOpen: boolean;
   onClose: () => void;
-  zIndex: number;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  isPlaying: boolean;
-  setIsPlaying: (v: boolean) => void;
-  handleTimeUpdate: () => void;
-  handleLoadedMetadata: () => void;
-  handleEnded: () => void;
-  setIsBuffering: (v: boolean) => void;
-  handleSeeked: () => void;
-  videoError: string | null;
-  setVideoError: (err: string | null) => void;
-  isBuffering: boolean;
-  togglePlay: () => void;
-  progress: number;
-  fillRef: React.RefObject<HTMLDivElement | null>;
-  handleRef: React.RefObject<HTMLDivElement | null>;
-  handlePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
-  duration: number;
-  timeTextRef: React.RefObject<HTMLParagraphElement | null>;
-  isScrubbingCurrent: boolean;
+  zIndex?: number;
 }
 
-function VideoPlayerRenderPortal({
-  src,
-  isOpen,
-  onClose,
-  zIndex,
-  videoRef,
-  isPlaying,
-  setIsPlaying,
-  handleTimeUpdate,
-  handleLoadedMetadata,
-  handleEnded,
-  setIsBuffering,
-  handleSeeked,
-  videoError,
-  setVideoError,
-  isBuffering,
-  togglePlay,
-  progress,
-  fillRef,
-  handleRef,
-  handlePointerDown,
-  duration,
-  timeTextRef,
-  isScrubbingCurrent,
-}: VideoPlayerRenderPortalProps) {
+export default function VideoPlayer({ src, isOpen, onClose, zIndex = 60 }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const timeTextRef = useRef<HTMLParagraphElement>(null);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+
+  const isScrubbingRef = useRef(false);
+  const wasPlaying = useRef(false);
+  const pendingSeekTime = useRef<number | null>(null);
+  const seekTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, []);
+
+  // Reset state and play when a new video opens
+  useEffect(() => {
+    setVideoError(null);
+    setIsBuffering(false);
+    setProgress(0);
+    if (!isOpen) return;
+
+    const v = videoRef.current;
+    if (!v) return;
+    v.load();
+    // Play attempt — opening comes from a user tap, so this is allowed
+    const tryPlay = () => v.play().catch(() => {});
+    tryPlay();
+  }, [src, isOpen]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    const timeout = seekTimeout.current;
+    const raf = rafRef.current;
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === " ") {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose, togglePlay]);
+
+  const performSeek = useCallback((v: HTMLVideoElement, time: number) => {
+    try {
+      if (typeof v.fastSeek === "function") {
+        v.fastSeek(time);
+      } else {
+        v.currentTime = time;
+      }
+    } catch {
+      v.currentTime = time;
+    }
+  }, []);
+
+  const handleSeeked = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    setIsBuffering(false);
+    if (pendingSeekTime.current !== null) {
+      const timeToSeek = pendingSeekTime.current;
+      pendingSeekTime.current = null;
+      performSeek(v, timeToSeek);
+    }
+  }, [performSeek]);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (isScrubbingRef.current) return;
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    setProgress(v.currentTime / v.duration);
+  }, []);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const v = videoRef.current;
+    if (v) setDuration(v.duration);
+  }, []);
+
+  const handleEnded = useCallback(() => setIsPlaying(false), []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const v = videoRef.current;
+      if (!v || !v.duration) return;
+      const bar = e.currentTarget;
+      bar.setPointerCapture(e.pointerId);
+      isScrubbingRef.current = true;
+      setIsScrubbing(true);
+
+      // Pause playback during scrubbing to prioritize decoding resources
+      if (!v.paused) {
+        wasPlaying.current = true;
+        v.pause();
+      } else {
+        wasPlaying.current = false;
+      }
+
+      const updateScrub = (clientX: number, isFinal = false) => {
+        const rect = bar.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const targetTime = ratio * v.duration;
+
+        // Direct DOM updates bypass React for 60fps scrubbing
+        if (fillRef.current) {
+          fillRef.current.style.transition = "none";
+          fillRef.current.style.width = `${ratio * 100}%`;
+        }
+        if (handleRef.current) {
+          handleRef.current.style.left = `${ratio * 100}%`;
+        }
+        if (timeTextRef.current) {
+          timeTextRef.current.textContent = `${formatTime(targetTime)} / ${formatTime(v.duration)}`;
+        }
+
+        pendingSeekTime.current = targetTime;
+
+        if (isFinal) {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          if (seekTimeout.current) clearTimeout(seekTimeout.current);
+          pendingSeekTime.current = null;
+          v.currentTime = targetTime;
+          setProgress(ratio);
+        } else {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(() => {
+            if (!v.seeking && pendingSeekTime.current !== null) {
+              const timeToSeek = pendingSeekTime.current;
+              pendingSeekTime.current = null;
+              performSeek(v, timeToSeek);
+            }
+          });
+        }
+      };
+
+      updateScrub(e.clientX);
+
+      const onMove = (ev: PointerEvent) => {
+        if (!isScrubbingRef.current) return;
+        updateScrub(ev.clientX);
+      };
+
+      const onUp = (ev: PointerEvent) => {
+        if (!isScrubbingRef.current) return;
+        isScrubbingRef.current = false;
+        setIsScrubbing(false);
+
+        updateScrub(ev.clientX, true);
+
+        if (fillRef.current) {
+          fillRef.current.style.transition = "width 0.05s linear";
+        }
+        if (wasPlaying.current) {
+          v.play().catch(() => {});
+        }
+
+        bar.removeEventListener("pointermove", onMove);
+        bar.removeEventListener("pointerup", onUp);
+        bar.removeEventListener("pointercancel", onUp);
+      };
+
+      bar.addEventListener("pointermove", onMove);
+      bar.addEventListener("pointerup", onUp);
+      bar.addEventListener("pointercancel", onUp);
+    },
+    [performSeek]
+  );
+
+  if (!mounted) return null;
+
   return createPortal(
     <AnimatePresence>
       {isOpen && (
@@ -528,7 +481,15 @@ function VideoPlayerRenderPortal({
           >
             <div
               className="relative overflow-hidden"
-              style={{ borderRadius: "16px", background: "#000", aspectRatio: "9/16", width: "100%", maxHeight: "75dvh", cursor: "pointer", flexShrink: 0 }}
+              style={{
+                borderRadius: "16px",
+                background: "#000",
+                aspectRatio: "9/16",
+                width: "100%",
+                maxHeight: "75dvh",
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
               onClick={togglePlay}
             >
               <video
@@ -570,9 +531,7 @@ function VideoPlayerRenderPortal({
                 videoError={videoError}
                 onRetry={() => {
                   setVideoError(null);
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                  }
+                  if (videoRef.current) videoRef.current.load();
                 }}
               />
 
@@ -580,7 +539,7 @@ function VideoPlayerRenderPortal({
 
               <PlayOverlay
                 isPlaying={isPlaying}
-                isScrubbing={isScrubbingCurrent}
+                isScrubbing={isScrubbing}
                 videoError={videoError}
                 togglePlay={togglePlay}
               />
@@ -607,36 +566,5 @@ function VideoPlayerRenderPortal({
       )}
     </AnimatePresence>,
     document.body
-  );
-}
-
-  if (!mounted) return null;
-
-  return (
-    <VideoPlayerRenderPortal
-      src={src}
-      isOpen={isOpen}
-      onClose={onClose}
-      zIndex={zIndex}
-      videoRef={videoRef}
-      isPlaying={isPlaying}
-      setIsPlaying={setIsPlaying}
-      handleTimeUpdate={handleTimeUpdate}
-      handleLoadedMetadata={handleLoadedMetadata}
-      handleEnded={handleEnded}
-      setIsBuffering={setIsBuffering}
-      handleSeeked={handleSeeked}
-      videoError={videoError}
-      setVideoError={setVideoError}
-      isBuffering={isBuffering}
-      togglePlay={togglePlay}
-      progress={progress}
-      fillRef={fillRef}
-      handleRef={handleRef}
-      handlePointerDown={handlePointerDown}
-      duration={duration}
-      timeTextRef={timeTextRef}
-      isScrubbingCurrent={isScrubbing.current}
-    />
   );
 }
