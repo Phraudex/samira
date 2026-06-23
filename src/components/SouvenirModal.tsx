@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import Image from "next/image";
@@ -12,50 +12,30 @@ import VideoPlayer from "./VideoPlayer";
 
 function LazyVideoThumbnail({ src, index }: { src: string; index: number }) {
   const [shouldLoad, setShouldLoad] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Stagger loading slightly (150ms per index) to prevent mobile connection spikes
-            const delay = Math.min(index * 150, 1200);
-            const timer = setTimeout(() => {
-              setShouldLoad(true);
-            }, delay);
-            observer.unobserve(entry.target);
-            return () => clearTimeout(timer);
-          }
-        });
-      },
-      { rootMargin: "120px" } // Preload before it enters the viewport
-    );
+    // Stagger loading based on index (150ms delay per video) to prevent mobile connection spikes
+    const delay = Math.min(index * 150, 1200);
+    const timer = setTimeout(() => {
+      setShouldLoad(true);
+    }, delay);
 
-    const el = containerRef.current;
-    if (el) {
-      observer.observe(el);
-    }
-
-    return () => {
-      if (el) observer.unobserve(el);
-      observer.disconnect();
-    };
+    return () => clearTimeout(timer);
   }, [src, index]);
 
   return (
     <div
-      ref={containerRef}
       style={{
         position: "absolute",
         inset: 0,
         width: "100%",
         height: "100%",
+        background: "linear-gradient(135deg, rgba(52,17,126,0.4), rgba(6,3,9,0.8))",
       }}
     >
       {shouldLoad ? (
         <video
-          src={src}
+          src={`${src}#t=0.5`}
           preload="metadata"
           playsInline
           muted
