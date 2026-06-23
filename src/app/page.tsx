@@ -50,7 +50,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main>
+    <main style={{ backgroundColor: "#060309", minHeight: "100dvh", width: "100vw" }}>
       {appState === "locked" && (
         <LockScreen onUnlockComplete={() => setAppState("unlocked")} />
       )}
